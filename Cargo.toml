@@ -1,0 +1,9 @@
+[package]
+name = "gpsd_proto"
+version = "0.1.0"
+authors = ["Marcus Geiger <git010@teufelsgraben.xyz>"]
+
+[dependencies]
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
