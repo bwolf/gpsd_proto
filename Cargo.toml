@@ -2,6 +2,8 @@
 name = "gpsd_proto"
 version = "0.1.0"
 authors = ["Marcus Geiger <git010@teufelsgraben.xyz>"]
+description = "The gpsd_proto module contains types and functions to connect to gpsd to get GPS coordinates and satellite information."
+license = "Apache-2.0"
 
 [dependencies]
 serde = "1.0"
