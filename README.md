@@ -1,7 +1,7 @@
 # gpsd_proto &emsp; [![Build Status]][travis]
 
 [Build Status]: https://travis-ci.org/bwolf/gpsd_proto.svg?branch=master
-[travis] https://travis-ci.org/bwolf/gpsd_proto
+[travis]: https://travis-ci.org/bwolf/gpsd_proto
 
 The `gpsd_proto` module contains types and functions to connect to
 [gpsd](http://catb.org/gpsd/) to get GPS coordinates and satellite
