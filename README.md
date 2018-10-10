@@ -8,7 +8,7 @@ was independence from C libraries, like `libgps` (provided by
 `gpsd`) to ease cross compiling.
 
 A example demo application is provided in the `example` sub
-directory. Check the repository for a up to date code.
+directory. Check the repository for up to date sample code.
 
 # Testing
 
