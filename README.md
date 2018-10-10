@@ -5,7 +5,7 @@
 
 # Demo
 
-[![asciicast](https://asciinema.org/a/EcBwYK5M3aYDQ3cOOiIV1ZNXb.png)](https://asciinema.org/a/EcBwYK5M3aYDQ3cOOiIV1ZNXb)
+TBD
 
 <!--- Module documentation of src/lib.rs follows --->
 
