@@ -8,7 +8,7 @@
 //! `gpsd`) to ease cross compiling.
 //!
 //! A example demo application is provided in the `example` sub
-//! directory. Check the repository for a up to date code.
+//! directory. Check the repository for up to date sample code.
 //!
 //! # Testing
 //!
@@ -29,19 +29,19 @@
 //!
 //! Start `gpsd` with a real GPS device:
 //!
-//! ```
+//! ```sh
 //! /usr/local/sbin/gpsd -N -D4 /dev/tty.SLAB_USBtoUART
 //! ```
 //!
 //! Or start [gpsd](http://catb.org/gpsd/gpsd.html) with a TCP stream to a remote GPS:
 //!
-//! ```
+//! ```sh
 //! /usr/local/sbin/gpsd -N -D2 tcp://192.168.177.147:11123
 //! ```
 //!
 //! Test the connection to `gpsd` with `telnet localhost 2947` and send the string:
 //!
-//! ```
+//! ```text
 //! ?WATCH={"enable":true,"json":true};
 //! ```
 
