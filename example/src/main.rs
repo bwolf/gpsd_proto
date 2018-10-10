@@ -51,7 +51,7 @@ where
                 ..
             } => {
                 println!(
-                    "{:5} {:10} {:10} {:5} {:5} {:5}",
+                    "{:3} {:8.5} {:8.5} {:6.1} m {:5.1} ° {:6.3} m/s",
                     mode.to_string(),
                     lat.unwrap_or(0.0),
                     lon.unwrap_or(0.0),
@@ -75,9 +75,9 @@ where
                     .iter()
                     .filter(|sat| sat.used)
                     .map(|sat| sat.prn.to_string())
-                    .join(", ");
+                    .join(",");
                 println!(
-                    "Sky report xdop {:4} ydop {:4} vdop {:4}, used {}",
+                    "Sky xdop {:4.2} ydop {:4.2} vdop {:4.2}, satellites {}",
                     xdop.unwrap_or(0.0),
                     ydop.unwrap_or(0.0),
                     vdop.unwrap_or(0.0),
