@@ -3,6 +3,10 @@
 [Build Status]: https://travis-ci.org/bwolf/gpsd_proto.svg?branch=master
 [travis]: https://travis-ci.org/bwolf/gpsd_proto
 
+# Demo
+
+[![asciicast](https://asciinema.org/a/EcBwYK5M3aYDQ3cOOiIV1ZNXb.png)](https://asciinema.org/a/EcBwYK5M3aYDQ3cOOiIV1ZNXb)
+
 <!--- Module documentation of src/lib.rs follows --->
 
 The `gpsd_proto` module contains types and functions to connect to
