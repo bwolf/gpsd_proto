@@ -401,11 +401,9 @@ where
             release: _,
             rev: _,
             proto_major,
-            proto_minor,
-            remote: _,
+            ..
         } => {
             if proto_major < PROTO_MAJOR_MIN {
-                println!("Invalid protocol {}.{}", proto_major, proto_minor);
                 return Err(GpsdError::UnsupportedGpsdProtocolVersion);
             }
         }
