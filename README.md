@@ -3,7 +3,7 @@
 [Build Status]: https://travis-ci.org/bwolf/gpsd_proto.svg?branch=master
 [travis]: https://travis-ci.org/bwolf/gpsd_proto
 [Latest Version]: https://meritbadge.herokuapp.com/gpsd_proto
-[crates.io]: https://crates.io/crates/hyper
+[crates.io]: https://crates.io/crates/gpsd_proto
 [Latest Docs]: https://docs.rs/gpsd_proto/badge.svg
 [docs.rs]: https://docs.rs/gpsd_proto/
 [Coverage Status]: https://codecov.io/gh/bwolf/gpsd_proto/branch/master/graph/badge.svg
