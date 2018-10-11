@@ -1,4 +1,4 @@
-# gpsd_proto &emsp; [![Build Status]][travis] [![Latest Version]][crates.io] [![Latest Docs]][docs.rs]
+# gpsd_proto &emsp; [![Build Status]][travis] [![Latest Version]][crates.io] [![Latest Docs]][docs.rs] [![Coverage Status]][codecov.io]
 
 [Build Status]: https://travis-ci.org/bwolf/gpsd_proto.svg?branch=master
 [travis]: https://travis-ci.org/bwolf/gpsd_proto
@@ -6,6 +6,8 @@
 [crates.io]: https://crates.io/crates/hyper
 [Latest Docs]: https://docs.rs/gpsd_proto/badge.svg
 [docs.rs]: https://docs.rs/gpsd_proto/
+[Coverage Status]: https://codecov.io/gh/bwolf/gpsd_proto/branch/master/graph/badge.svg
+[codecov.io]: https://codecov.io/gh/bwolf/gpsd_proto
 
 <!--- Module documentation of src/lib.rs follows --->
 
