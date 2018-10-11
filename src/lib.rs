@@ -283,7 +283,7 @@ pub enum ResponseData {
         /// estimate.
         pdop: Option<f32>,
         /// List of satellite objects in skyview.
-        satellites: Vec<Satellites>,
+        satellites: Vec<Satellite>,
     },
 }
 
@@ -322,7 +322,7 @@ where
 
 /// Detailed satellite information.
 #[derive(Debug, Deserialize)]
-pub struct Satellites {
+pub struct Satellite {
     /// PRN ID of the satellite. 1-63 are GNSS satellites, 64-96 are
     /// GLONASS satellites, 100-164 are SBAS satellites.
     #[serde(rename = "PRN")]
