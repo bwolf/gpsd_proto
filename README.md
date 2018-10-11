@@ -1,11 +1,11 @@
-# gpsd_proto &emsp; [![Build Status]][travis]
+# gpsd_proto &emsp; [![Build Status]][travis] [![Latest Version]][crates.io] [![Latest Docs]][docs.rs]
 
 [Build Status]: https://travis-ci.org/bwolf/gpsd_proto.svg?branch=master
 [travis]: https://travis-ci.org/bwolf/gpsd_proto
-
-# Demo
-
-TBD
+[Latest Version]: https://meritbadge.herokuapp.com/gpsd_proto
+[crates.io]: https://crates.io/crates/hyper
+[Latest Docs]: https://docs.rs/gpsd_proto/badge.svg
+[docs.rs]: https://docs.rs/gpsd_proto/
 
 <!--- Module documentation of src/lib.rs follows --->
 
@@ -47,7 +47,7 @@ Start `gpsd` with a real GPS device:
 Or start [gpsd](http://catb.org/gpsd/gpsd.html) with a TCP stream to a remote GPS:
 
 ```sh
-/usr/local/sbin/gpsd -N -D2 tcp://192.168.177.147:11123
+/usr/local/sbin/gpsd -N -D2 tcp://<IP>:<PORT>
 ```
 
 Test the connection to `gpsd` with `telnet localhost 2947` and send the string:
