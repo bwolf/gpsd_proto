@@ -481,3 +481,126 @@ pub fn get_data(debug: bool, reader: &mut io::BufRead) -> Result<ResponseData, G
     let msg: ResponseData = serde_json::from_slice(&mut data)?;
     Ok(msg)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{get_data, handshake, GpsdError, Mode, ResponseData, Satellite, ENABLE_WATCH_CMD};
+    use std::io::BufWriter;
+
+    #[test]
+    fn handshake_ok() {
+        // Note: linefeeds (0x0a) are added implicit; each line ends with 0x0d 0x0a.
+        let mut reader: &[u8] = b"{\"class\":\"VERSION\",\"release\":\"blah\",\"rev\":\"blurp\",\"proto_major\":3,\"proto_minor\":12}\x0d
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":\"true\"}]}
+{\"class\":\"WATCH\",\"enable\":true,\"json\":true,\"nmea\":false}
+";
+        let mut writer = BufWriter::new(Vec::<u8>::new());
+        let r = handshake(false, &mut reader, &mut writer);
+        assert!(r.is_ok());
+        assert_eq!(writer.get_mut().as_slice(), ENABLE_WATCH_CMD.as_bytes());
+    }
+
+    #[test]
+    fn handshake_unsupported_protocol_version() {
+        let mut reader: &[u8] = b"{\"class\":\"VERSION\",\"release\":\"blah\",\"rev\":\"blurp\",\"proto_major\":2,\"proto_minor\":17}\x0d
+";
+        let mut writer = BufWriter::new(Vec::<u8>::new());
+        let err = match handshake(false, &mut reader, &mut writer) {
+            Err(GpsdError::UnsupportedGpsdProtocolVersion) => Ok(()),
+            _ => Err(()),
+        };
+        assert_eq!(err, Ok(()));
+        let empty: &[u8] = &[];
+        assert_eq!(writer.get_mut().as_slice(), empty);
+    }
+
+    #[test]
+    fn handshake_unexpected_gpsd_reply() {
+        // A possible response, but in the wrong order; At the begin
+        // of the handshake, a VERSION reply is expected.
+        let mut reader: &[u8] =
+            b"{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":\"true\"}]}
+";
+        let mut writer = BufWriter::new(Vec::<u8>::new());
+        let err = match handshake(true, &mut reader, &mut writer) {
+            Err(GpsdError::UnexpectedGpsdReply(_)) => Ok(()),
+            _ => Err(()),
+        };
+        assert_eq!(err, Ok(()));
+        let empty: &[u8] = &[];
+        assert_eq!(writer.get_mut().as_slice(), empty);
+    }
+
+    #[test]
+    fn handshake_json_error() {
+        let mut reader: &[u8] = b"{\"class\":broken";
+        let mut writer = BufWriter::new(Vec::<u8>::new());
+        let err = match handshake(false, &mut reader, &mut writer) {
+            Err(GpsdError::JsonError(_)) => Ok(()),
+            _ => Err(()),
+        };
+        assert_eq!(err, Ok(()));
+        let empty: &[u8] = &[];
+        assert_eq!(writer.get_mut().as_slice(), empty);
+    }
+
+    #[test]
+    fn get_data_tpv() {
+        let mut reader: &[u8] = b"{\"class\":\"TPV\",\"mode\":3,\"lat\":66.123}\x0d\x0a";
+        let r = get_data(false, &mut reader).unwrap();
+        let test = match r {
+            ResponseData::Tpv {
+                device: _,
+                mode,
+                time: _,
+                ept: _,
+                lat,
+                ..
+            } => {
+                assert!(match mode {
+                    Mode::Fix3d => true,
+                    _ => false,
+                });
+                assert_eq!(lat.unwrap(), 66.123);
+                Ok(())
+            }
+            _ => Err(()),
+        };
+        assert_eq!(test, Ok(()));
+    }
+
+    #[test]
+    fn get_data_sky() {
+        let mut reader: &[u8] = b"{\"class\":\"SKY\",\"device\":\"adevice\",\"satellites\":[{\"PRN\":123,\"el\":1,\"az\":2,\"ss\":3,\"used\":true}]}\x0d\x0a";
+
+        let r = get_data(false, &mut reader).unwrap();
+        let test = match r {
+            ResponseData::Sky {
+                device,
+                xdop: _,
+                ydop: _,
+                vdop: _,
+                tdop: _,
+                hdop: _,
+                gdop: _,
+                pdop: _,
+                satellites,
+            } => {
+                assert_eq!(device.unwrap(), "adevice");
+                let actual = &satellites[0];
+                match actual {
+                    Satellite {
+                        prn: 123,
+                        el: 1,
+                        az: 2,
+                        ss: 3,
+                        used: true,
+                    } => Ok(()),
+                    _ => Err(()),
+                }
+            }
+            _ => Err(()),
+        };
+        assert_eq!(test, Ok(()));
+    }
+}
