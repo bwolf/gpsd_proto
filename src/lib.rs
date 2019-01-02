@@ -603,4 +603,11 @@ mod tests {
         };
         assert_eq!(test, Ok(()));
     }
+
+    #[test]
+    fn mode_to_string() {
+        assert_eq!("NoFix", Mode::NoFix.to_string());
+        assert_eq!("2d", Mode::Fix2d.to_string());
+        assert_eq!("3d", Mode::Fix3d.to_string());
+    }
 }
