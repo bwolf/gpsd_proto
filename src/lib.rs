@@ -395,11 +395,12 @@ where
     if debug {
         println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
     }
-    let msg: ResponseHandshake = serde_json::from_slice(&mut data)?;
+    let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Version {
-            release: _,
-            rev: _,
+            // On a struct pattern, the fields are referenced by name,
+            // index (in the case of tuple structs) or ignored by use
+            // of ..
             proto_major,
             ..
         } => {
@@ -415,7 +416,7 @@ where
     }
 
     // Enable WATCH
-    writer.write(ENABLE_WATCH_CMD.as_bytes())?;
+    writer.write_all(ENABLE_WATCH_CMD.as_bytes())?;
     writer.flush()?;
 
     // Get DEVICES
@@ -424,9 +425,9 @@ where
     if debug {
         println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
     }
-    let msg: ResponseHandshake = serde_json::from_slice(&mut data)?;
+    let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
-        ResponseHandshake::Devices { devices: _ } => {}
+        ResponseHandshake::Devices { .. } => {}
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
                 String::from_utf8(data.clone()).unwrap(),
@@ -440,7 +441,7 @@ where
     if debug {
         println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
     }
-    let msg: ResponseHandshake = serde_json::from_slice(&mut data)?;
+    let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Watch {
             enable, json, nmea, ..
@@ -478,7 +479,7 @@ pub fn get_data(debug: bool, reader: &mut io::BufRead) -> Result<ResponseData, G
     if debug {
         println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
     }
-    let msg: ResponseData = serde_json::from_slice(&mut data)?;
+    let msg: ResponseData = serde_json::from_slice(&data)?;
     Ok(msg)
 }
 
