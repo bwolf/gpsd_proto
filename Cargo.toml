@@ -1,17 +1,15 @@
 [package]
-name = "gpsd_proto"
-version = "0.2.1"
-
-license = "Apache-2.0"
-repository = "https://github.com/bwolf/gpsd_proto.git"
-homepage = "https://github.com/bwolf/gpsd_proto.git"
-documentation = "https://docs.rs/gpsd_proto/"
-readme = "README.md"
 authors = ["Marcus Geiger"]
-
 description = "The gpsd_proto module contains types and functions to connect to gpsd to get GPS coordinates and satellite information."
-
+documentation = "https://docs.rs/gpsd_proto/"
+edition = "2018"
+homepage = "https://github.com/bwolf/gpsd_proto.git"
 keywords = ["gps"]
+license = "Apache-2.0"
+name = "gpsd_proto"
+repository = "https://github.com/bwolf/gpsd_proto.git"
+readme = "README.md"
+version = "0.2.2-DEV"
 
 [badges]
 travis-ci = { repository = "bwolf/gpsd_proto" }
@@ -20,3 +18,6 @@ travis-ci = { repository = "bwolf/gpsd_proto" }
 serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
+
+[dev-dependencies]
+itertools = "0.7"
