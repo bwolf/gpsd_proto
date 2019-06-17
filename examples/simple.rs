@@ -1,8 +1,5 @@
-extern crate itertools;
-extern crate serde;
-extern crate serde_json;
-
-extern crate gpsd_proto;
+#[macro_use]
+extern crate log;
 
 use gpsd_proto::{get_data, handshake, GpsdError, ResponseData};
 use itertools::Itertools;
@@ -10,17 +7,16 @@ use std::io;
 use std::net::TcpStream;
 
 pub fn demo_forever<R>(
-    debug: bool,
     reader: &mut io::BufRead,
     writer: &mut io::BufWriter<R>,
 ) -> Result<(), GpsdError>
 where
     R: std::io::Write,
 {
-    handshake(debug, reader, writer)?;
+    handshake(reader, writer)?;
 
     loop {
-        let msg = get_data(debug, reader)?;
+        let msg = get_data(reader)?;
         match msg {
             ResponseData::Device {
                 path,
@@ -28,7 +24,7 @@ where
                 activated,
                 ..
             } => {
-                println!(
+                debug!(
                     "DEVICE {} {} {}",
                     path.unwrap_or("".to_string()),
                     driver.unwrap_or("".to_string()),
@@ -89,11 +85,12 @@ where
 }
 
 fn main() {
+    env_logger::init();
     if let Ok(stream) = TcpStream::connect("127.0.0.1:2947") {
-        println!("Connected to gpsd");
+        info!("Connected to gpsd");
         let mut reader = io::BufReader::new(&stream);
         let mut writer = io::BufWriter::new(&stream);
-        demo_forever(false, &mut reader, &mut writer).unwrap();
+        demo_forever(&mut reader, &mut writer).unwrap();
     } else {
         panic!("Couldn't connect to gpsd...");
     }

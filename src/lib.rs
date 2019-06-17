@@ -45,17 +45,17 @@
 //! ?WATCH={"enable":true,"json":true};
 //! ```
 
-extern crate serde;
-extern crate serde_json;
+#[macro_use]
+extern crate log;
 
 #[macro_use]
 extern crate serde_derive;
 
-use std::io;
-use std::io::Write;
-
 use serde::de::*;
 use serde::Deserializer;
+use std::fmt;
+use std::io;
+use std::io::Write;
 
 /// Minimum supported version of `gpsd`.
 pub const PROTO_MAJOR_MIN: u8 = 3;
@@ -298,12 +298,12 @@ pub enum Mode {
     Fix3d,
 }
 
-impl ToString for Mode {
-    fn to_string(&self) -> String {
+impl fmt::Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Mode::NoFix => String::from("NoFix"),
-            Mode::Fix2d => String::from("2d"),
-            Mode::Fix3d => String::from("3d"),
+            Mode::NoFix => write!(f, "NoFix"),
+            Mode::Fix2d => write!(f, "2d"),
+            Mode::Fix3d => write!(f, "3d"),
         }
     }
 }
@@ -366,6 +366,20 @@ impl From<serde_json::Error> for GpsdError {
     }
 }
 
+impl fmt::Display for GpsdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            GpsdError::IoError(e) => write!(f, "IoError: {}", e),
+            GpsdError::JsonError(e) => write!(f, "JsonError: {}", e),
+            GpsdError::UnsupportedGpsdProtocolVersion => {
+                write!(f, "UnsupportedGpsdProtocolVersion")
+            }
+            GpsdError::UnexpectedGpsdReply(e) => write!(f, "UnexpectedGpsdReply: {}", e),
+            GpsdError::WatchFail(e) => write!(f, "WatchFail: {}", e),
+        }
+    }
+}
+
 /// Performs the initial handshake with `gpsd`.
 ///
 /// The following sequence of messages is expected: get VERSION, set
@@ -382,7 +396,6 @@ impl From<serde_json::Error> for GpsdError {
 /// If the handshake fails, this functions returns an error that
 /// indicates the type of error.
 pub fn handshake<R>(
-    debug: bool,
     reader: &mut io::BufRead,
     writer: &mut io::BufWriter<R>,
 ) -> Result<(), GpsdError>
@@ -392,9 +405,7 @@ where
     // Get VERSION
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    if debug {
-        println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
-    }
+    trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Version {
@@ -422,9 +433,7 @@ where
     // Get DEVICES
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    if debug {
-        println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
-    }
+    trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Devices { .. } => {}
@@ -438,9 +447,7 @@ where
     // Get WATCH
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    if debug {
-        println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
-    }
+    trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Watch {
@@ -470,15 +477,12 @@ where
 ///
 /// # Arguments
 ///
-/// * `debug` - enable debug printing of raw JSON data received
 /// * `reader` - reader to fetch data from `gpsd`
 /// * `writer` - write to send data to `gpsd`
-pub fn get_data(debug: bool, reader: &mut io::BufRead) -> Result<ResponseData, GpsdError> {
+pub fn get_data(reader: &mut io::BufRead) -> Result<ResponseData, GpsdError> {
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    if debug {
-        println!("DEBUG {}", String::from_utf8(data.clone()).unwrap());
-    }
+    trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseData = serde_json::from_slice(&data)?;
     Ok(msg)
 }
@@ -496,7 +500,7 @@ mod tests {
 {\"class\":\"WATCH\",\"enable\":true,\"json\":true,\"nmea\":false}
 ";
         let mut writer = BufWriter::new(Vec::<u8>::new());
-        let r = handshake(false, &mut reader, &mut writer);
+        let r = handshake(&mut reader, &mut writer);
         assert!(r.is_ok());
         assert_eq!(writer.get_mut().as_slice(), ENABLE_WATCH_CMD.as_bytes());
     }
@@ -506,7 +510,7 @@ mod tests {
         let mut reader: &[u8] = b"{\"class\":\"VERSION\",\"release\":\"blah\",\"rev\":\"blurp\",\"proto_major\":2,\"proto_minor\":17}\x0d
 ";
         let mut writer = BufWriter::new(Vec::<u8>::new());
-        let err = match handshake(false, &mut reader, &mut writer) {
+        let err = match handshake(&mut reader, &mut writer) {
             Err(GpsdError::UnsupportedGpsdProtocolVersion) => Ok(()),
             _ => Err(()),
         };
@@ -523,7 +527,7 @@ mod tests {
             b"{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":\"true\"}]}
 ";
         let mut writer = BufWriter::new(Vec::<u8>::new());
-        let err = match handshake(true, &mut reader, &mut writer) {
+        let err = match handshake(&mut reader, &mut writer) {
             Err(GpsdError::UnexpectedGpsdReply(_)) => Ok(()),
             _ => Err(()),
         };
@@ -536,7 +540,7 @@ mod tests {
     fn handshake_json_error() {
         let mut reader: &[u8] = b"{\"class\":broken";
         let mut writer = BufWriter::new(Vec::<u8>::new());
-        let err = match handshake(false, &mut reader, &mut writer) {
+        let err = match handshake(&mut reader, &mut writer) {
             Err(GpsdError::JsonError(_)) => Ok(()),
             _ => Err(()),
         };
@@ -548,7 +552,7 @@ mod tests {
     #[test]
     fn get_data_tpv() {
         let mut reader: &[u8] = b"{\"class\":\"TPV\",\"mode\":3,\"lat\":66.123}\x0d\x0a";
-        let r = get_data(false, &mut reader).unwrap();
+        let r = get_data(&mut reader).unwrap();
         let test = match r {
             ResponseData::Tpv {
                 device: _,
@@ -574,7 +578,7 @@ mod tests {
     fn get_data_sky() {
         let mut reader: &[u8] = b"{\"class\":\"SKY\",\"device\":\"adevice\",\"satellites\":[{\"PRN\":123,\"el\":1,\"az\":2,\"ss\":3,\"used\":true}]}\x0d\x0a";
 
-        let r = get_data(false, &mut reader).unwrap();
+        let r = get_data(&mut reader).unwrap();
         let test = match r {
             ResponseData::Sky {
                 device,
