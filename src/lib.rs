@@ -60,11 +60,37 @@ use std::io::Write;
 /// Minimum supported version of `gpsd`.
 pub const PROTO_MAJOR_MIN: u8 = 3;
 
-/// Command to enable watch
+/// Command to enable watch.
 pub const ENABLE_WATCH_CMD: &str = "?WATCH={\"enable\":true,\"json\":true};\r\n";
 
-/// Simple device information as reported by `gpsd`
+/// `gpsd` ships a VERSION response to each client when the client
+/// first connects to it.
 #[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Version {
+    /// Public release level.
+    pub release: String,
+    /// Internal revision-control level.
+    pub rev: String,
+    /// API major revision level.
+    pub proto_major: u8,
+    /// API minor revision level.
+    pub proto_minor: u8,
+    /// URL of the remote daemon reporting this version. If empty,
+    /// this is the version of the local daemon.
+    pub remote: Option<String>,
+}
+
+/// Device information (i.e. device enumeration).
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Devices {
+    devices: Vec<DeviceInfo>,
+}
+
+/// Single device information as reported by `gpsd`.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct DeviceInfo {
     /// Name the device for which the control bits are being reported,
     /// or for which they are to be applied. This attribute may be
@@ -75,219 +101,96 @@ pub struct DeviceInfo {
     pub activated: Option<String>,
 }
 
-/// Responses from `gpsd` during handshake
+/// Watch response. Elicits a report of per-subscriber policy.
 #[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Watch {
+    /// Enable (true) or disable (false) watcher mode. Default is
+    /// true.
+    pub enable: Option<bool>,
+    /// Enable (true) or disable (false) dumping of JSON reports.
+    /// Default is false.
+    pub json: Option<bool>,
+    /// Enable (true) or disable (false) dumping of binary packets
+    /// as pseudo-NMEA. Default is false.
+    pub nmea: Option<bool>,
+    /// Controls 'raw' mode. When this attribute is set to 1 for a
+    /// channel, gpsd reports the unprocessed NMEA or AIVDM data
+    /// stream from whatever device is attached. Binary GPS
+    /// packets are hex-dumped. RTCM2 and RTCM3 packets are not
+    /// dumped in raw mode. When this attribute is set to 2 for a
+    /// channel that processes binary data, gpsd reports the
+    /// received data verbatim without hex-dumping.
+    pub raw: Option<u8>,
+    /// If true, apply scaling divisors to output before dumping;
+    /// default is false.
+    pub scaled: Option<bool>,
+    /// undocumented
+    pub timing: Option<bool>,
+    /// If true, aggregate AIS type24 sentence parts. If false,
+    /// report each part as a separate JSON object, leaving the
+    /// client to match MMSIs and aggregate. Default is false.
+    /// Applies only to AIS reports.
+    pub split24: Option<bool>,
+    /// If true, emit the TOFF JSON message on each cycle and a
+    /// PPS JSON message when the device issues 1PPS. Default is
+    /// false.
+    pub pps: Option<bool>,
+}
+
+/// Responses from `gpsd` during handshake..
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum ResponseHandshake {
-    /// `gpsd` ships a VERSION response to each client when the client
-    /// first connects to it.
-    #[serde(rename = "VERSION")]
-    Version {
-        /// Public release level.
-        release: String,
-        /// Internal revision-control level.
-        rev: String,
-        /// API major revision level.
-        proto_major: u8,
-        /// API minor revision level.
-        proto_minor: u8,
-        /// URL of the remote daemon reporting this version. If empty,
-        /// this is the version of the local daemon.
-        remote: Option<String>,
-    },
-    /// Device information (i.e. device enumeration)
-    #[serde(rename = "DEVICES")]
-    Devices { devices: Vec<DeviceInfo> },
-    /// Watch response. Elicits a report of per-subscriber policy.
-    #[serde(rename = "WATCH")]
-    Watch {
-        /// Enable (true) or disable (false) watcher mode. Default is
-        /// true.
-        enable: Option<bool>,
-        /// Enable (true) or disable (false) dumping of JSON reports.
-        /// Default is false.
-        json: Option<bool>,
-        /// Enable (true) or disable (false) dumping of binary packets
-        /// as pseudo-NMEA. Default is false.
-        nmea: Option<bool>,
-        /// Controls 'raw' mode. When this attribute is set to 1 for a
-        /// channel, gpsd reports the unprocessed NMEA or AIVDM data
-        /// stream from whatever device is attached. Binary GPS
-        /// packets are hex-dumped. RTCM2 and RTCM3 packets are not
-        /// dumped in raw mode. When this attribute is set to 2 for a
-        /// channel that processes binary data, gpsd reports the
-        /// received data verbatim without hex-dumping.
-        raw: Option<u8>,
-        /// If true, apply scaling divisors to output before dumping;
-        /// default is false.
-        scaled: Option<bool>,
-        /// undocumented
-        timing: Option<bool>,
-        /// If true, aggregate AIS type24 sentence parts. If false,
-        /// report each part as a separate JSON object, leaving the
-        /// client to match MMSIs and aggregate. Default is false.
-        /// Applies only to AIS reports.
-        split24: Option<bool>,
-        /// If true, emit the TOFF JSON message on each cycle and a
-        /// PPS JSON message when the device issues 1PPS. Default is
-        /// false.
-        pps: Option<bool>,
-    },
+    Version(Version),
+    Devices(Devices),
+    Watch(Watch),
 }
 
-/// Responses from `gpsd` after handshake (i.e. the payload)
+/// Device information.
 #[derive(Debug, Deserialize)]
-#[serde(tag = "class")]
-pub enum ResponseData {
-    /// Device information
-    #[serde(rename = "DEVICE")]
-    Device {
-        /// Name the device for which the control bits are being
-        /// reported, or for which they are to be applied. This
-        /// attribute may be omitted only when there is exactly one
-        /// subscribed channel.
-        path: Option<String>,
-        /// Time the device was activated as an ISO8601 timestamp. If
-        /// the device is inactive this attribute is absent.
-        activated: Option<String>,
-        /// Bit vector of property flags. Currently defined flags are:
-        /// describe packet types seen so far (GPS, RTCM2, RTCM3,
-        /// AIS). Won't be reported if empty, e.g. before gpsd has
-        /// seen identifiable packets from the device.
-        flags: Option<i32>,
-        /// GPSD's name for the device driver type. Won't be reported
-        /// before gpsd has seen identifiable packets from the device.
-        driver: Option<String>,
-        /// Whatever version information the device returned.
-        subtype: Option<String>,
-        /// Device speed in bits per second.
-        bps: Option<u16>,
-        /// N, O or E for no parity, odd, or even.
-        parity: Option<String>,
-        /// Stop bits (1 or 2).
-        stopbits: Option<u8>,
-        /// 0 means NMEA mode and 1 means alternate mode (binary if it
-        /// has one, for SiRF and Evermore chipsets in particular).
-        /// Attempting to set this mode on a non-GPS device will yield
-        /// an error.
-        native: Option<u8>,
-        /// Device cycle time in seconds.
-        cycle: Option<f32>,
-        /// Device minimum cycle time in seconds. Reported from
-        /// ?DEVICE when (and only when) the rate is switchable. It is
-        /// read-only and not settable.
-        mincycle: Option<f32>,
-    },
-    /// GPS position.
-    ///
-    /// A TPV object is a time-position-velocity report. The "mode"
-    /// field will be emitted before optional fields that may be
-    /// absent when there is no fix. Error estimates will be emitted
-    /// after the fix components they're associated with. Others may
-    /// be reported or not depending on the fix quality.
-    #[serde(rename = "TPV")]
-    Tpv {
-        /// Name of the originating device.
-        device: Option<String>,
-        /// NMEA mode, see `Mode` enum.
-        #[serde(deserialize_with = "mode_from_str")]
-        mode: Mode,
-        /// Time/date stamp in ISO8601 format, UTC. May have a
-        /// fractional part of up to .001sec precision. May be absent
-        /// if mode is not 2 or 3.
-        time: Option<String>,
-        /// Estimated timestamp error (%f, seconds, 95% confidence).
-        /// Present if time is present.
-        ept: Option<f32>,
-        /// Latitude in degrees: +/- signifies North/South. Present
-        /// when mode is 2 or 3.
-        lat: Option<f64>,
-        /// Longitude in degrees: +/- signifies East/West. Present
-        /// when mode is 2 or 3.
-        lon: Option<f64>,
-        /// Altitude in meters. Present if mode is 3.
-        alt: Option<f32>,
-        /// Longitude error estimate in meters, 95% confidence.
-        /// Present if mode is 2 or 3 and DOPs can be calculated from
-        /// the satellite view.
-        epx: Option<f32>,
-        /// Latitude error estimate in meters, 95% confidence. Present
-        /// if mode is 2 or 3 and DOPs can be calculated from the
-        /// satellite view.
-        epy: Option<f32>,
-        /// Estimated vertical error in meters, 95% confidence.
-        /// Present if mode is 3 and DOPs can be calculated from the
-        /// satellite view.
-        epv: Option<f32>,
-        /// Course over ground, degrees from true north.
-        track: Option<f32>,
-        /// Speed over ground, meters per second.
-        speed: Option<f32>,
-        /// Climb (positive) or sink (negative) rate, meters per
-        /// second.
-        climb: Option<f32>,
-        /// Direction error estimate in degrees, 95% confidence.
-        epd: Option<f32>,
-        /// Speed error estinmate in meters/sec, 95% confidence.
-        eps: Option<f32>,
-        /// Climb/sink error estimate in meters/sec, 95% confidence.
-        epc: Option<f32>,
-    },
-    /// Satellites information.
-    ///
-    /// A SKY object reports a sky view of the GPS satellite
-    /// positions. If there is no GPS device available, or no skyview
-    /// has been reported yet.
-    ///
-    /// Many devices compute dilution of precision factors but do not
-    /// include them in their reports. Many that do report DOPs report
-    /// only HDOP, two-dimensional circular error. gpsd always passes
-    /// through whatever the device actually reports, then attempts to
-    /// fill in other DOPs by calculating the appropriate determinants
-    /// in a covariance matrix based on the satellite view. DOPs may
-    /// be missing if some of these determinants are singular. It can
-    /// even happen that the device reports an error estimate in
-    /// meters when the corresponding DOP is unavailable; some devices
-    /// use more sophisticated error modeling than the covariance
-    /// calculation.
-    #[serde(rename = "SKY")]
-    Sky {
-        /// Name of originating device.
-        device: Option<String>,
-        /// Longitudinal dilution of precision, a dimensionless factor
-        /// which should be multiplied by a base UERE to get an error
-        /// estimate.
-        xdop: Option<f32>,
-        /// Latitudinal dilution of precision, a dimensionless factor
-        /// which should be multiplied by a base UERE to get an error
-        /// estimate.
-        ydop: Option<f32>,
-        /// Altitude dilution of precision, a dimensionless factor
-        /// which should be multiplied by a base UERE to get an error
-        /// estimate.
-        vdop: Option<f32>,
-        /// Time dilution of precision, a dimensionless factor which
-        /// should be multiplied by a base UERE to get an error
-        /// estimate.
-        tdop: Option<f32>,
-        /// Horizontal dilution of precision, a dimensionless factor
-        /// which should be multiplied by a base UERE to get a
-        /// circular error estimate.
-        hdop: Option<f32>,
-        /// Hyperspherical dilution of precision, a dimensionless
-        /// factor which should be multiplied by a base UERE to get an
-        /// error estimate.
-        gdop: Option<f32>,
-        /// Spherical dilution of precision, a dimensionless factor
-        /// which should be multiplied by a base UERE to get an error
-        /// estimate.
-        pdop: Option<f32>,
-        /// List of satellite objects in skyview.
-        satellites: Vec<Satellite>,
-    },
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Device {
+    /// Name the device for which the control bits are being
+    /// reported, or for which they are to be applied. This
+    /// attribute may be omitted only when there is exactly one
+    /// subscribed channel.
+    pub path: Option<String>,
+    /// Time the device was activated as an ISO8601 timestamp. If
+    /// the device is inactive this attribute is absent.
+    pub activated: Option<String>,
+    /// Bit vector of property flags. Currently defined flags are:
+    /// describe packet types seen so far (GPS, RTCM2, RTCM3,
+    /// AIS). Won't be reported if empty, e.g. before gpsd has
+    /// seen identifiable packets from the device.
+    pub flags: Option<i32>,
+    /// GPSD's name for the device driver type. Won't be reported
+    /// before gpsd has seen identifiable packets from the device.
+    pub driver: Option<String>,
+    /// Whatever version information the device returned.
+    pub subtype: Option<String>,
+    /// Device speed in bits per second.
+    pub bps: Option<u16>,
+    /// N, O or E for no parity, odd, or even.
+    pub parity: Option<String>,
+    /// Stop bits (1 or 2).
+    pub stopbits: Option<u8>,
+    /// 0 means NMEA mode and 1 means alternate mode (binary if it
+    /// has one, for SiRF and Evermore chipsets in particular).
+    /// Attempting to set this mode on a non-GPS device will yield
+    /// an error.
+    pub native: Option<u8>,
+    /// Device cycle time in seconds.
+    pub cycle: Option<f32>,
+    /// Device minimum cycle time in seconds. Reported from
+    /// ?DEVICE when (and only when) the rate is switchable. It is
+    /// read-only and not settable.
+    pub mincycle: Option<f32>,
 }
 
-/// Type of GPS fix
+/// Type of GPS fix.
 #[derive(Debug)]
 pub enum Mode {
     /// No fix at all.
@@ -320,8 +223,66 @@ where
     }
 }
 
+/// GPS position.
+///
+/// A TPV object is a time-position-velocity report. The "mode"
+/// field will be emitted before optional fields that may be
+/// absent when there is no fix. Error estimates will be emitted
+/// after the fix components they're associated with. Others may
+/// be reported or not depending on the fix quality.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Tpv {
+    /// Name of the originating device.
+    pub device: Option<String>,
+    /// NMEA mode, see `Mode` enum.
+    #[serde(deserialize_with = "mode_from_str")]
+    pub mode: Mode,
+    /// Time/date stamp in ISO8601 format, UTC. May have a
+    /// fractional part of up to .001sec precision. May be absent
+    /// if mode is not 2 or 3.
+    pub time: Option<String>,
+    /// Estimated timestamp error (%f, seconds, 95% confidence).
+    /// Present if time is present.
+    pub ept: Option<f32>,
+    /// Latitude in degrees: +/- signifies North/South. Present
+    /// when mode is 2 or 3.
+    pub lat: Option<f64>,
+    /// Longitude in degrees: +/- signifies East/West. Present
+    /// when mode is 2 or 3.
+    pub lon: Option<f64>,
+    /// Altitude in meters. Present if mode is 3.
+    pub alt: Option<f32>,
+    /// Longitude error estimate in meters, 95% confidence.
+    /// Present if mode is 2 or 3 and DOPs can be calculated from
+    /// the satellite view.
+    pub epx: Option<f32>,
+    /// Latitude error estimate in meters, 95% confidence. Present
+    /// if mode is 2 or 3 and DOPs can be calculated from the
+    /// satellite view.
+    pub epy: Option<f32>,
+    /// Estimated vertical error in meters, 95% confidence.
+    /// Present if mode is 3 and DOPs can be calculated from the
+    /// satellite view.
+    pub epv: Option<f32>,
+    /// Course over ground, degrees from true north.
+    pub track: Option<f32>,
+    /// Speed over ground, meters per second.
+    pub speed: Option<f32>,
+    /// Climb (positive) or sink (negative) rate, meters per
+    /// second.
+    pub climb: Option<f32>,
+    /// Direction error estimate in degrees, 95% confidence.
+    pub epd: Option<f32>,
+    /// Speed error estinmate in meters/sec, 95% confidence.
+    pub eps: Option<f32>,
+    /// Climb/sink error estimate in meters/sec, 95% confidence.
+    pub epc: Option<f32>,
+}
+
 /// Detailed satellite information.
 #[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Satellite {
     /// PRN ID of the satellite. 1-63 are GNSS satellites, 64-96 are
     /// GLONASS satellites, 100-164 are SBAS satellites.
@@ -337,6 +298,85 @@ pub struct Satellite {
     /// flagged used if the solution has corrections from them, but
     /// not all drivers make this information available.).
     pub used: bool,
+}
+
+/// Satellites information.
+///
+/// A SKY object reports a sky view of the GPS satellite
+/// positions. If there is no GPS device available, or no skyview
+/// has been reported yet.
+///
+/// Many devices compute dilution of precision factors but do not
+/// include them in their reports. Many that do report DOPs report
+/// only HDOP, two-dimensional circular error. gpsd always passes
+/// through whatever the device actually reports, then attempts to
+/// fill in other DOPs by calculating the appropriate determinants
+/// in a covariance matrix based on the satellite view. DOPs may
+/// be missing if some of these determinants are singular. It can
+/// even happen that the device reports an error estimate in
+/// meters when the corresponding DOP is unavailable; some devices
+/// use more sophisticated error modeling than the covariance
+/// calculation.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Sky {
+    /// Name of originating device.
+    pub device: Option<String>,
+    /// Longitudinal dilution of precision, a dimensionless factor
+    /// which should be multiplied by a base UERE to get an error
+    /// estimate.
+    pub xdop: Option<f32>,
+    /// Latitudinal dilution of precision, a dimensionless factor
+    /// which should be multiplied by a base UERE to get an error
+    /// estimate.
+    pub ydop: Option<f32>,
+    /// Altitude dilution of precision, a dimensionless factor
+    /// which should be multiplied by a base UERE to get an error
+    /// estimate.
+    pub vdop: Option<f32>,
+    /// Time dilution of precision, a dimensionless factor which
+    /// should be multiplied by a base UERE to get an error
+    /// estimate.
+    pub tdop: Option<f32>,
+    /// Horizontal dilution of precision, a dimensionless factor
+    /// which should be multiplied by a base UERE to get a
+    /// circular error estimate.
+    pub hdop: Option<f32>,
+    /// Hyperspherical dilution of precision, a dimensionless
+    /// factor which should be multiplied by a base UERE to get an
+    /// error estimate.
+    pub gdop: Option<f32>,
+    /// Spherical dilution of precision, a dimensionless factor
+    /// which should be multiplied by a base UERE to get an error
+    /// estimate.
+    pub pdop: Option<f32>,
+    /// List of satellite objects in skyview.
+    pub satellites: Vec<Satellite>,
+}
+
+/// Responses from `gpsd` after handshake (i.e. the payload)
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+#[serde(tag = "class")]
+#[serde(rename_all = "UPPERCASE")]
+pub enum ResponseData {
+    Device(Device),
+    Tpv(Tpv),
+    Sky(Sky),
+}
+
+/// All known `gpsd` responses (handshake + normal operation).
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+#[serde(tag = "class")]
+#[serde(rename_all = "UPPERCASE")]
+pub enum UnifiedResponse {
+    Version(Version),
+    Devices(Devices),
+    Watch(Watch),
+    Device(Device),
+    Tpv(Tpv),
+    Sky(Sky),
 }
 
 /// Errors during handshake or data acquisition.
@@ -408,14 +448,8 @@ where
     trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
-        ResponseHandshake::Version {
-            // On a struct pattern, the fields are referenced by name,
-            // index (in the case of tuple structs) or ignored by use
-            // of ..
-            proto_major,
-            ..
-        } => {
-            if proto_major < PROTO_MAJOR_MIN {
+        ResponseHandshake::Version(v) => {
+            if v.proto_major < PROTO_MAJOR_MIN {
                 return Err(GpsdError::UnsupportedGpsdProtocolVersion);
             }
         }
@@ -436,7 +470,7 @@ where
     trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
-        ResponseHandshake::Devices { .. } => {}
+        ResponseHandshake::Devices(_) => {}
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
                 String::from_utf8(data.clone()).unwrap(),
@@ -450,13 +484,11 @@ where
     trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
-        ResponseHandshake::Watch {
-            enable, json, nmea, ..
-        } => {
+        ResponseHandshake::Watch(w) => {
             if let (false, false, true) = (
-                enable.unwrap_or(false),
-                json.unwrap_or(false),
-                nmea.unwrap_or(false),
+                w.enable.unwrap_or(false),
+                w.json.unwrap_or(false),
+                w.nmea.unwrap_or(false),
             ) {
                 return Err(GpsdError::WatchFail(
                     String::from_utf8(data.clone()).unwrap(),
@@ -554,19 +586,12 @@ mod tests {
         let mut reader: &[u8] = b"{\"class\":\"TPV\",\"mode\":3,\"lat\":66.123}\x0d\x0a";
         let r = get_data(&mut reader).unwrap();
         let test = match r {
-            ResponseData::Tpv {
-                device: _,
-                mode,
-                time: _,
-                ept: _,
-                lat,
-                ..
-            } => {
-                assert!(match mode {
+            ResponseData::Tpv(tpv) => {
+                assert!(match tpv.mode {
                     Mode::Fix3d => true,
                     _ => false,
                 });
-                assert_eq!(lat.unwrap(), 66.123);
+                assert_eq!(tpv.lat.unwrap(), 66.123);
                 Ok(())
             }
             _ => Err(()),
@@ -580,19 +605,9 @@ mod tests {
 
         let r = get_data(&mut reader).unwrap();
         let test = match r {
-            ResponseData::Sky {
-                device,
-                xdop: _,
-                ydop: _,
-                vdop: _,
-                tdop: _,
-                hdop: _,
-                gdop: _,
-                pdop: _,
-                satellites,
-            } => {
-                assert_eq!(device.unwrap(), "adevice");
-                let actual = &satellites[0];
+            ResponseData::Sky(sky) => {
+                assert_eq!(sky.device.unwrap(), "adevice");
+                let actual = &sky.satellites[0];
                 match actual {
                     Satellite {
                         prn: 123,

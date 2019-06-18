@@ -18,65 +18,37 @@ where
     loop {
         let msg = get_data(reader)?;
         match msg {
-            ResponseData::Device {
-                path,
-                driver,
-                activated,
-                ..
-            } => {
+            ResponseData::Device(d) => {
                 debug!(
                     "DEVICE {} {} {}",
-                    path.unwrap_or("".to_string()),
-                    driver.unwrap_or("".to_string()),
-                    activated.unwrap_or("".to_string()),
+                    d.path.unwrap_or("".to_string()),
+                    d.driver.unwrap_or("".to_string()),
+                    d.activated.unwrap_or("".to_string()),
                 );
             }
-            ResponseData::Tpv {
-                device: _,
-                mode,
-                time: _,
-                ept: _,
-                lat,
-                lon,
-                alt,
-                epx: _,
-                epy: _,
-                epv: _,
-                track,
-                speed,
-                ..
-            } => {
+            ResponseData::Tpv(t) => {
                 println!(
                     "{:3} {:8.5} {:8.5} {:6.1} m {:5.1} ° {:6.3} m/s",
-                    mode.to_string(),
-                    lat.unwrap_or(0.0),
-                    lon.unwrap_or(0.0),
-                    alt.unwrap_or(0.0),
-                    track.unwrap_or(0.0),
-                    speed.unwrap_or(0.0),
+                    t.mode.to_string(),
+                    t.lat.unwrap_or(0.0),
+                    t.lon.unwrap_or(0.0),
+                    t.alt.unwrap_or(0.0),
+                    t.track.unwrap_or(0.0),
+                    t.speed.unwrap_or(0.0),
                 );
             }
-            ResponseData::Sky {
-                device: _,
-                xdop,
-                ydop,
-                vdop,
-                tdop: _,
-                hdop: _,
-                gdop: _,
-                pdop: _,
-                satellites,
-            } => {
-                let sats = satellites
+            ResponseData::Sky(sky) => {
+                let sats = sky
+                    .satellites
                     .iter()
                     .filter(|sat| sat.used)
                     .map(|sat| sat.prn.to_string())
                     .join(",");
                 println!(
                     "Sky xdop {:4.2} ydop {:4.2} vdop {:4.2}, satellites {}",
-                    xdop.unwrap_or(0.0),
-                    ydop.unwrap_or(0.0),
-                    vdop.unwrap_or(0.0),
+                    sky.xdop.unwrap_or(0.0),
+                    sky.ydop.unwrap_or(0.0),
+                    sky.vdop.unwrap_or(0.0),
                     sats
                 );
             }
