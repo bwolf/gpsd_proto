@@ -36,6 +36,7 @@ fn main() {
                                 UnifiedResponse::Device(d) => debug!("Device {:?}", d),
                                 UnifiedResponse::Tpv(t) => debug!("Tpv {:?}", t),
                                 UnifiedResponse::Sky(s) => debug!("Sky {:?}", s),
+                                UnifiedResponse::Pps(p) => debug!("PPS {:?}", p),
                             },
                             Err(e) => {
                                 error!("Error decoding: {}", e);
