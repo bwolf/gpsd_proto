@@ -287,13 +287,13 @@ pub struct Satellite {
     /// PRN ID of the satellite. 1-63 are GNSS satellites, 64-96 are
     /// GLONASS satellites, 100-164 are SBAS satellites.
     #[serde(rename = "PRN")]
-    pub prn: u16,
+    pub prn: i16,
     /// Elevation in degrees.
-    pub el: u16,
+    pub el: i16,
     /// Azimuth, degrees from true north.
-    pub az: u16,
+    pub az: i16,
     /// Signal strength in dB.
-    pub ss: u16,
+    pub ss: i16,
     /// Used in current solution? (SBAS/WAAS/EGNOS satellites may be
     /// flagged used if the solution has corrections from them, but
     /// not all drivers make this information available.).
