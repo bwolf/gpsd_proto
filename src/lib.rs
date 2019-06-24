@@ -287,13 +287,13 @@ pub struct Satellite {
     /// PRN ID of the satellite. 1-63 are GNSS satellites, 64-96 are
     /// GLONASS satellites, 100-164 are SBAS satellites.
     #[serde(rename = "PRN")]
-    pub prn: u16,
+    pub prn: i16,
     /// Elevation in degrees.
-    pub el: u16,
+    pub el: i16,
     /// Azimuth, degrees from true north.
-    pub az: u16,
+    pub az: i16,
     /// Signal strength in dB.
-    pub ss: u16,
+    pub ss: i16,
     /// Used in current solution? (SBAS/WAAS/EGNOS satellites may be
     /// flagged used if the solution has corrections from them, but
     /// not all drivers make this information available.).
@@ -354,6 +354,59 @@ pub struct Sky {
     pub satellites: Vec<Satellite>,
 }
 
+/// This message is emitted each time the daemon sees a valid PPS (Pulse Per
+/// Second) strobe from a device.
+///
+/// This message exactly mirrors the TOFF message except for two details.
+///
+/// PPS emits the NTP precision. See the NTP documentation for their definition
+/// of precision.
+///
+/// The TOFF message reports the GPS time as derived from the GPS serial data
+/// stream. The PPS message reports the GPS time as derived from the GPS PPS
+/// pulse.
+///
+/// There are various sources of error in the reported clock times. The speed of
+/// the serial connection between the GPS and the system adds a delay to start
+/// of cycle detection. An even bigger error is added by the variable
+/// computation time inside the GPS. Taken together the time derived from the
+/// start of the GPS cycle can have offsets of 10 millisecond to 700
+/// milliseconds and combined jitter and wander of 100 to 300 millisecond.
+///
+/// This message is emitted once per second to watchers of a device emitting
+/// PPS, and reports the time of the start of the GPS second (when the 1PPS
+/// arrives) and seconds as reported by the system clock (which may be
+/// NTP-corrected) at that moment.
+///
+/// The message contains two second/nanosecond pairs: real_sec and real_nsec
+/// contain the time the GPS thinks it was at the PPS edge; clock_sec and
+/// clock_nsec contain the time the system clock thinks it was at the PPS edge.
+/// real_nsec is always to nanosecond precision. clock_nsec is nanosecond
+/// precision on most systems.
+///
+/// There are various sources of error in the reported clock times. For PPS
+/// delivered via a real serial-line strobe, serial-interrupt latency plus
+/// processing time to the timer call should be bounded above by about 10
+/// microseconds; that can be reduced to less than 1 microsecond if your kernel
+/// supports RFC 2783. USB1.1-to-serial control-line emulation is limited to
+/// about 1 millisecond.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Pps {
+    /// Name of originating device.
+    pub device: String,
+    /// Seconds from the PPS source.
+    pub real_sec: f32,
+    /// Nanoseconds from the PPS source.
+    pub real_nsec: f32,
+    /// Seconds from the system clock.
+    pub clock_sec: f32,
+    /// Nanoseconds from the system clock.
+    pub clock_nsec: f32,
+    /// NTP style estimate of PPS precision.
+    pub precision: f32,
+}
+
 /// Responses from `gpsd` after handshake (i.e. the payload)
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
@@ -363,6 +416,7 @@ pub enum ResponseData {
     Device(Device),
     Tpv(Tpv),
     Sky(Sky),
+    Pps(Pps),
 }
 
 /// All known `gpsd` responses (handshake + normal operation).
@@ -377,6 +431,7 @@ pub enum UnifiedResponse {
     Device(Device),
     Tpv(Tpv),
     Sky(Sky),
+    Pps(Pps),
 }
 
 /// Errors during handshake or data acquisition.
