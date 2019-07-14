@@ -418,20 +418,20 @@ pub struct Gst {
     pub time: Option<String>,
     /// Value of the standard deviation of the range inputs to the navigation
     /// process (range inputs include pseudoranges and DGPS corrections).
-    pub rms: Option<f64>,
+    pub rms: Option<f32>,
     /// Standard deviation of semi-major axis of error ellipse, in meters.
-    pub major: Option<f64>,
+    pub major: Option<f32>,
     /// Standard deviation of semi-minor axis of error ellipse, in meters.
-    pub minor: Option<f64>,
+    pub minor: Option<f32>,
     /// Orientation of semi-major axis of error ellipse, in degrees from true
     /// north.
-    pub orient: Option<f64>,
+    pub orient: Option<f32>,
     /// Standard deviation of latitude error, in meters.
-    pub lat: Option<f64>,
+    pub lat: Option<f32>,
     /// Standard deviation of longitude error, in meters.
-    pub lon: Option<f64>,
+    pub lon: Option<f32>,
     /// Standard deviation of altitude error, in meters.
-    pub alt: Option<f64>,
+    pub alt: Option<f32>,
 }
 
 /// Responses from `gpsd` after handshake (i.e. the payload)
