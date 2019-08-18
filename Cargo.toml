@@ -4,12 +4,12 @@ description = "The gpsd_proto module contains types and functions to connect to 
 documentation = "https://docs.rs/gpsd_proto/"
 edition = "2018"
 homepage = "https://github.com/bwolf/gpsd_proto.git"
-keywords = ["gps"]
+keywords = ["protocol", "gps"]
 license = "Apache-2.0"
 name = "gpsd_proto"
 repository = "https://github.com/bwolf/gpsd_proto.git"
 readme = "README.md"
-version = "0.5.0"
+version = "0.5.1"
 
 [badges]
 travis-ci = { repository = "bwolf/gpsd_proto" }
