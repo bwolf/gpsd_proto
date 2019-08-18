@@ -235,6 +235,8 @@ where
 pub struct Tpv {
     /// Name of the originating device.
     pub device: Option<String>,
+    /// GPS fix status.
+    pub status: Option<i32>,
     /// NMEA mode, see `Mode` enum.
     #[serde(deserialize_with = "mode_from_str")]
     pub mode: Mode,
