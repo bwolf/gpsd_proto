@@ -58,6 +58,15 @@ where
                     p.device, p.real_sec, p.real_nsec, p.clock_sec, p.clock_nsec, p.precision,
                 );
             }
+            ResponseData::Gst(g) => {
+                println!(
+                    "GST {} time: {} rms: {} major: {} m minor: {} m orient: {}° lat: {} m lon: {} m alt: {} m",
+                    g.device.unwrap_or("".to_string()), g.time.unwrap_or("".to_string()),
+                    g.rms.unwrap_or(0.), g.major.unwrap_or(0.),
+                    g.minor.unwrap_or(0.), g.orient.unwrap_or(0.),
+                    g.lat.unwrap_or(0.), g.lon.unwrap_or(0.), g.alt.unwrap_or(0.),
+                );
+            }
         }
     }
 }

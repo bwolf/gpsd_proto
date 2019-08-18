@@ -407,6 +407,33 @@ pub struct Pps {
     pub precision: f32,
 }
 
+/// Pseudorange noise report.
+#[derive(Debug, Deserialize)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct Gst {
+    /// Name of originating device.
+    pub device: Option<String>,
+    /// Time/date stamp in ISO8601 format, UTC. May have a fractional part of up
+    /// to .001 sec precision.
+    pub time: Option<String>,
+    /// Value of the standard deviation of the range inputs to the navigation
+    /// process (range inputs include pseudoranges and DGPS corrections).
+    pub rms: Option<f32>,
+    /// Standard deviation of semi-major axis of error ellipse, in meters.
+    pub major: Option<f32>,
+    /// Standard deviation of semi-minor axis of error ellipse, in meters.
+    pub minor: Option<f32>,
+    /// Orientation of semi-major axis of error ellipse, in degrees from true
+    /// north.
+    pub orient: Option<f32>,
+    /// Standard deviation of latitude error, in meters.
+    pub lat: Option<f32>,
+    /// Standard deviation of longitude error, in meters.
+    pub lon: Option<f32>,
+    /// Standard deviation of altitude error, in meters.
+    pub alt: Option<f32>,
+}
+
 /// Responses from `gpsd` after handshake (i.e. the payload)
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
@@ -417,6 +444,7 @@ pub enum ResponseData {
     Tpv(Tpv),
     Sky(Sky),
     Pps(Pps),
+    Gst(Gst),
 }
 
 /// All known `gpsd` responses (handshake + normal operation).
@@ -432,6 +460,7 @@ pub enum UnifiedResponse {
     Tpv(Tpv),
     Sky(Sky),
     Pps(Pps),
+    Gst(Gst),
 }
 
 /// Errors during handshake or data acquisition.
