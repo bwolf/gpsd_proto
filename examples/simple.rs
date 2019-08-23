@@ -7,7 +7,7 @@ use std::io;
 use std::net::TcpStream;
 
 pub fn demo_forever<R>(
-    reader: &mut io::BufRead,
+    reader: &mut dyn io::BufRead,
     writer: &mut io::BufWriter<R>,
 ) -> Result<(), GpsdError>
 where
