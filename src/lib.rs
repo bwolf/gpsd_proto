@@ -522,7 +522,7 @@ impl fmt::Display for GpsdError {
 /// If the handshake fails, this functions returns an error that
 /// indicates the type of error.
 pub fn handshake<R>(
-    reader: &mut io::BufRead,
+    reader: &mut dyn io::BufRead,
     writer: &mut io::BufWriter<R>,
 ) -> Result<(), GpsdError>
 where
@@ -597,7 +597,7 @@ where
 ///
 /// * `reader` - reader to fetch data from `gpsd`
 /// * `writer` - write to send data to `gpsd`
-pub fn get_data(reader: &mut io::BufRead) -> Result<ResponseData, GpsdError> {
+pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError> {
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
     trace!("{}", String::from_utf8(data.clone()).unwrap());
