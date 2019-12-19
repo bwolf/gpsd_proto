@@ -55,7 +55,6 @@ use serde::de::*;
 use serde::Deserializer;
 use std::fmt;
 use std::io;
-use std::io::Write;
 
 /// Minimum supported version of `gpsd`.
 pub const PROTO_MAJOR_MIN: u8 = 3;
@@ -521,13 +520,10 @@ impl fmt::Display for GpsdError {
 ///
 /// If the handshake fails, this functions returns an error that
 /// indicates the type of error.
-pub fn handshake<R>(
+pub fn handshake(
     reader: &mut dyn io::BufRead,
-    writer: &mut io::BufWriter<R>,
-) -> Result<(), GpsdError>
-where
-    R: std::io::Write,
-{
+    writer: &mut dyn io::Write,
+) -> Result<(), GpsdError> {
     // Get VERSION
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
