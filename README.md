@@ -25,9 +25,12 @@ directory. Check the repository for up to date sample code.
 
 # Testing
 
-`gpsd_proto` has been tested against `gpsd` version 3.17 on macOS
-with a GPS mice (Adopt SkyTraQ Venus 8) and the iOS app
-[GPS2IP](http://www.capsicumdreams.com/iphone/gps2ip/).
+`gpsd_proto` has been tested against `gpsd` version 3.17 on macOS and Linux with these devices:
+
+- [Quectel EC25 Mini](https://www.quectel.com/product/ec25minipcie.htm) PCIe 4G/LTE Module
+- [u-blox MAX-M8Q](https://www.u-blox.com/en/product/max-m8-series)
+- GPS mice (Adopt SkyTraQ Venus 8)
+- iOS app [GPS2IP](http://www.capsicumdreams.com/iphone/gps2ip/).
 
 Feel free to report any other supported GPS by opening a GitHub
 issue.
