@@ -302,11 +302,11 @@ pub struct Satellite {
     #[serde(rename = "PRN")]
     pub prn: i16,
     /// Elevation in degrees.
-    pub el: f32,
+    pub el: Option<f32>,
     /// Azimuth, degrees from true north.
-    pub az: f32,
+    pub az: Option<f32>,
     /// Signal strength in dB.
-    pub ss: f32,
+    pub ss: Option<f32>,
     /// Used in current solution? (SBAS/WAAS/EGNOS satellites may be
     /// flagged used if the solution has corrections from them, but
     /// not all drivers make this information available.).
