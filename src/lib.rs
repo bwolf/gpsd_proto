@@ -210,7 +210,7 @@ impl fmt::Display for Mode {
     }
 }
 
-pub fn mode_from_str<'de, D>(deserializer: D) -> Result<Mode, D::Error>
+fn mode_from_str<'de, D>(deserializer: D) -> Result<Mode, D::Error>
 where
     D: Deserializer<'de>,
 {
