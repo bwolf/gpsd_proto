@@ -603,7 +603,7 @@ pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError>
 
 #[cfg(test)]
 mod tests {
-    use super::{get_data, handshake, GpsdError, Mode, ResponseData, Satellite, ENABLE_WATCH_CMD};
+    use super::{get_data, handshake, GpsdError, Mode, ResponseData, ENABLE_WATCH_CMD};
     use std::io::BufWriter;
 
     #[test]
@@ -690,16 +690,11 @@ mod tests {
             ResponseData::Sky(sky) => {
                 assert_eq!(sky.device.unwrap(), "adevice");
                 let actual = &sky.satellites[0];
-                match actual {
-                    Satellite {
-                        prn: 123,
-                        el: 1,
-                        az: 2,
-                        ss: 3,
-                        used: true,
-                    } => Ok(()),
-                    _ => Err(()),
-                }
+                assert!(actual.prn == 123);
+                assert!(actual.el == 1.0);
+                assert!(actual.az == 2.0);
+                assert!(actual.ss == 3.0);
+                Ok(())
             }
             _ => Err(()),
         };
