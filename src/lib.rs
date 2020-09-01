@@ -552,7 +552,7 @@ pub fn handshake(
         }
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
-                String::from_utf8(data.clone()).unwrap(),
+                String::from_utf8(data).unwrap(),
             ))
         }
     }
@@ -570,7 +570,7 @@ pub fn handshake(
         ResponseHandshake::Devices(_) => {}
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
-                String::from_utf8(data.clone()).unwrap(),
+                String::from_utf8(data).unwrap(),
             ))
         }
     }
@@ -588,13 +588,13 @@ pub fn handshake(
                 w.nmea.unwrap_or(false),
             ) {
                 return Err(GpsdError::WatchFail(
-                    String::from_utf8(data.clone()).unwrap(),
+                    String::from_utf8(data).unwrap(),
                 ));
             }
         }
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
-                String::from_utf8(data.clone()).unwrap(),
+                String::from_utf8(data).unwrap(),
             ))
         }
     }
