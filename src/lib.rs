@@ -246,6 +246,16 @@ pub struct Tpv {
     /// Estimated timestamp error (%f, seconds, 95% confidence).
     /// Present if time is present.
     pub ept: Option<f32>,
+    pub leapseconds: Option<i32>,
+    /// MSL altitude in metres
+    #[serde(rename = "altMSL")]
+    pub alt_msl: Option<f32>,
+    /// Altitude height above ellipsoid (elipsoid is unspecified, but probably WGS48)
+    #[serde(rename = "altHAE")]
+    pub alt_hae: Option<f32>,
+    /// Geoid separation between whatever geoid the device uses and WGS84, in metres
+    #[serde(rename = "geoidSep")]
+    pub geoid_sep: Option<f32>,
     /// Latitude in degrees: +/- signifies North/South. Present
     /// when mode is 2 or 3.
     pub lat: Option<f64>,
@@ -279,6 +289,8 @@ pub struct Tpv {
     pub eps: Option<f32>,
     /// Climb/sink error estimate in meters/sec, 95% confidence.
     pub epc: Option<f32>,
+    /// Horizontal 2D position error in metres
+    pub eph: Option<f32>,
 }
 
 /// Detailed satellite information.
@@ -290,15 +302,18 @@ pub struct Satellite {
     #[serde(rename = "PRN")]
     pub prn: i16,
     /// Elevation in degrees.
-    pub el: i16,
+    pub el: Option<f32>,
     /// Azimuth, degrees from true north.
-    pub az: i16,
+    pub az: Option<f32>,
     /// Signal strength in dB.
-    pub ss: i16,
+    pub ss: Option<f32>,
     /// Used in current solution? (SBAS/WAAS/EGNOS satellites may be
     /// flagged used if the solution has corrections from them, but
     /// not all drivers make this information available.).
     pub used: bool,
+    pub gnssid: Option<u8>,
+    pub svid: Option<u16>,
+    pub health: Option<u8>, 
 }
 
 /// Satellites information.
@@ -603,7 +618,7 @@ pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError>
 
 #[cfg(test)]
 mod tests {
-    use super::{get_data, handshake, GpsdError, Mode, ResponseData, Satellite, ENABLE_WATCH_CMD};
+    use super::{get_data, handshake, GpsdError, Mode, ResponseData, ENABLE_WATCH_CMD};
     use std::io::BufWriter;
 
     #[test]
@@ -683,23 +698,22 @@ mod tests {
 
     #[test]
     fn get_data_sky() {
-        let mut reader: &[u8] = b"{\"class\":\"SKY\",\"device\":\"adevice\",\"satellites\":[{\"PRN\":123,\"el\":1,\"az\":2,\"ss\":3,\"used\":true}]}\x0d\x0a";
+        let mut reader: &[u8] = b"{\"class\":\"SKY\",\"device\":\"aDevice\",\"satellites\":[{\"PRN\":123,\"el\":1.0,\"az\":2.0,\"ss\":3.0,\"used\":true,\"gnssid\":1,\"svid\":271,\"health\":1}]}\x0d\x0a";
 
         let r = get_data(&mut reader).unwrap();
         let test = match r {
             ResponseData::Sky(sky) => {
-                assert_eq!(sky.device.unwrap(), "adevice");
+                assert_eq!(sky.device.unwrap(), "aDevice");
                 let actual = &sky.satellites[0];
-                match actual {
-                    Satellite {
-                        prn: 123,
-                        el: 1,
-                        az: 2,
-                        ss: 3,
-                        used: true,
-                    } => Ok(()),
-                    _ => Err(()),
-                }
+                assert_eq!(actual.prn, 123);
+                assert_eq!(actual.el, Some(1.));
+                assert_eq!(actual.az, Some(2.));
+                assert_eq!(actual.ss, Some(3.));
+                assert_eq!(actual.used, true);
+                assert_eq!(actual.gnssid, Some(1));
+                assert_eq!(actual.svid, Some(271));
+                assert_eq!(actual.health, Some(1));
+                Ok(())
             }
             _ => Err(()),
         };
