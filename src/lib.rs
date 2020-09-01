@@ -247,7 +247,7 @@ pub struct Tpv {
     /// Present if time is present.
     pub ept: Option<f32>,
     pub leapseconds: Option<i32>,
-    /// MSL altitude in metres
+    /// MSL altitude in meters.
     #[serde(rename = "altMSL")]
     pub alt_msl: Option<f32>,
     /// Altitude height above ellipsoid (elipsoid is unspecified, but probably WGS48)
@@ -289,7 +289,7 @@ pub struct Tpv {
     pub eps: Option<f32>,
     /// Climb/sink error estimate in meters/sec, 95% confidence.
     pub epc: Option<f32>,
-    /// Horizontal 2D position error in metres
+    /// Horizontal 2D position error in meters.
     pub eph: Option<f32>,
 }
 
@@ -313,7 +313,7 @@ pub struct Satellite {
     pub used: bool,
     pub gnssid: Option<u8>,
     pub svid: Option<u16>,
-    pub health: Option<u8>, 
+    pub health: Option<u8>,
 }
 
 /// Satellites information.
