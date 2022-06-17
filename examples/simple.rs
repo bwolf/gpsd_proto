@@ -21,9 +21,9 @@ where
             ResponseData::Device(d) => {
                 debug!(
                     "DEVICE {} {} {}",
-                    d.path.unwrap_or("".to_string()),
-                    d.driver.unwrap_or("".to_string()),
-                    d.activated.unwrap_or("".to_string()),
+                    d.path.unwrap_or_else(|| "".to_string()),
+                    d.driver.unwrap_or_else(|| "".to_string()),
+                    d.activated.unwrap_or_else(|| "".to_string()),
                 );
             }
             ResponseData::Tpv(t) => {
@@ -61,7 +61,7 @@ where
             ResponseData::Gst(g) => {
                 println!(
                     "GST {} time: {} rms: {} major: {} m minor: {} m orient: {}° lat: {} m lon: {} m alt: {} m",
-                    g.device.unwrap_or("".to_string()), g.time.unwrap_or("".to_string()),
+                    g.device.unwrap_or_else(|| "".to_string()), g.time.unwrap_or_else(|| "".to_string()),
                     g.rms.unwrap_or(0.), g.major.unwrap_or(0.),
                     g.minor.unwrap_or(0.), g.orient.unwrap_or(0.),
                     g.lat.unwrap_or(0.), g.lon.unwrap_or(0.), g.alt.unwrap_or(0.),

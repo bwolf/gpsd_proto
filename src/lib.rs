@@ -45,13 +45,8 @@
 //! ?WATCH={"enable":true,"json":true};
 //! ```
 
-#[macro_use]
-extern crate log;
-
-#[macro_use]
-extern crate serde_derive;
-
-use serde::de::*;
+use log::trace;
+use serde::Deserialize;
 use serde::Deserializer;
 use std::fmt;
 use std::io;
@@ -84,7 +79,7 @@ pub struct Version {
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Devices {
-    devices: Vec<DeviceInfo>,
+    pub devices: Vec<DeviceInfo>,
 }
 
 /// Single device information as reported by `gpsd`.
@@ -587,9 +582,7 @@ pub fn handshake(
                 w.json.unwrap_or(false),
                 w.nmea.unwrap_or(false),
             ) {
-                return Err(GpsdError::WatchFail(
-                    String::from_utf8(data).unwrap(),
-                ));
+                return Err(GpsdError::WatchFail(String::from_utf8(data).unwrap()));
             }
         }
         _ => {

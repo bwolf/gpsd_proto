@@ -14,18 +14,19 @@ version = "0.7.0"
 [badges]
 travis-ci = { repository = "bwolf/gpsd_proto" }
 
-[features]
-default = []
-serialize = [] # Enable Serde Serialize for the types
+# [features]
+# default = []
+# serialize = [] # Enable Serde Serialize for the types
 
 [dependencies]
 log = "0.4"
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 
 [dev-dependencies]
 itertools = "0.7"
 env_logger = "0.6"
-futures = "0.1.27"
-tokio = "0.1"
+#futures = "0.1.27"
+futures = "0.3"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["full"] }
