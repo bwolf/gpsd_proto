@@ -84,7 +84,7 @@ pub struct Version {
 #[derive(Debug, Deserialize)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Devices {
-    devices: Vec<DeviceInfo>,
+    pub devices: Vec<DeviceInfo>,
 }
 
 /// Single device information as reported by `gpsd`.
