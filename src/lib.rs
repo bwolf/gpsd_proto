@@ -367,7 +367,7 @@ pub struct Sky {
     /// estimate.
     pub pdop: Option<f32>,
     /// List of satellite objects in skyview.
-    pub satellites: Vec<Satellite>,
+    pub satellites: Option<Vec<Satellite>>,
 }
 
 /// This message is emitted each time the daemon sees a valid PPS (Pulse Per
@@ -704,7 +704,7 @@ mod tests {
         let test = match r {
             ResponseData::Sky(sky) => {
                 assert_eq!(sky.device.unwrap(), "aDevice");
-                let actual = &sky.satellites[0];
+                let actual = &sky.satellites.unwrap()[0];
                 assert_eq!(actual.prn, 123);
                 assert_eq!(actual.el, Some(1.));
                 assert_eq!(actual.az, Some(2.));

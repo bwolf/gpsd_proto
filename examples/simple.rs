@@ -38,12 +38,15 @@ where
                 );
             }
             ResponseData::Sky(sky) => {
-                let sats = sky
-                    .satellites
-                    .iter()
-                    .filter(|sat| sat.used)
-                    .map(|sat| sat.prn.to_string())
-                    .join(",");
+                let sats = sky.satellites.map_or_else(
+                    || "(none)".to_owned(),
+                    |sats| {
+                        sats.iter()
+                            .filter(|sat| sat.used)
+                            .map(|sat| sat.prn.to_string())
+                            .join(",")
+                    },
+                );
                 println!(
                     "Sky xdop {:4.2} ydop {:4.2} vdop {:4.2}, satellites {}",
                     sky.xdop.unwrap_or(0.0),
