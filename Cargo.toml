@@ -2,7 +2,7 @@
 authors = ["Marcus Geiger"]
 description = "The gpsd_proto module contains types and functions to connect to gpsd to get GPS coordinates and satellite information."
 documentation = "https://docs.rs/gpsd_proto/"
-edition = "2018"
+edition = "2021"
 homepage = "https://github.com/bwolf/gpsd_proto.git"
 keywords = ["protocol", "gps"]
 license = "Apache-2.0"
