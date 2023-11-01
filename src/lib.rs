@@ -64,7 +64,7 @@ pub const ENABLE_WATCH_CMD: &str = "?WATCH={\"enable\":true,\"json\":true};\r\n"
 
 /// `gpsd` ships a VERSION response to each client when the client
 /// first connects to it.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Version {
     /// Public release level.
@@ -81,14 +81,14 @@ pub struct Version {
 }
 
 /// Device information (i.e. device enumeration).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Devices {
     devices: Vec<DeviceInfo>,
 }
 
 /// Single device information as reported by `gpsd`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct DeviceInfo {
     /// Name the device for which the control bits are being reported,
@@ -101,7 +101,7 @@ pub struct DeviceInfo {
 }
 
 /// Watch response. Elicits a report of per-subscriber policy.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Watch {
     /// Enable (true) or disable (false) watcher mode. Default is
@@ -138,7 +138,7 @@ pub struct Watch {
 }
 
 /// Responses from `gpsd` during handshake..
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
 #[serde(rename_all = "UPPERCASE")]
@@ -149,7 +149,7 @@ pub enum ResponseHandshake {
 }
 
 /// Device information.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Device {
     /// Name the device for which the control bits are being
@@ -229,7 +229,7 @@ where
 /// absent when there is no fix. Error estimates will be emitted
 /// after the fix components they're associated with. Others may
 /// be reported or not depending on the fix quality.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Tpv {
     /// Name of the originating device.
@@ -294,7 +294,7 @@ pub struct Tpv {
 }
 
 /// Detailed satellite information.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Satellite {
     /// PRN ID of the satellite. 1-63 are GNSS satellites, 64-96 are
@@ -333,7 +333,7 @@ pub struct Satellite {
 /// meters when the corresponding DOP is unavailable; some devices
 /// use more sophisticated error modeling than the covariance
 /// calculation.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Sky {
     /// Name of originating device.
@@ -406,7 +406,7 @@ pub struct Sky {
 /// microseconds; that can be reduced to less than 1 microsecond if your kernel
 /// supports RFC 2783. USB1.1-to-serial control-line emulation is limited to
 /// about 1 millisecond.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Pps {
     /// Name of originating device.
@@ -424,7 +424,7 @@ pub struct Pps {
 }
 
 /// Pseudorange noise report.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Gst {
     /// Name of originating device.
@@ -451,7 +451,7 @@ pub struct Gst {
 }
 
 /// Responses from `gpsd` after handshake (i.e. the payload)
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
 #[serde(rename_all = "UPPERCASE")]
@@ -464,7 +464,7 @@ pub enum ResponseData {
 }
 
 /// All known `gpsd` responses (handshake + normal operation).
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
 #[serde(rename_all = "UPPERCASE")]
