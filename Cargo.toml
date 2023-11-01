@@ -9,7 +9,7 @@ license = "Apache-2.0"
 name = "gpsd_proto"
 repository = "https://github.com/bwolf/gpsd_proto.git"
 readme = "README.md"
-version = "0.7.0"
+version = "1.0.0"
 
 [badges]
 travis-ci = { repository = "bwolf/gpsd_proto" }
