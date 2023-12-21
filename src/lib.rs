@@ -53,6 +53,7 @@ extern crate serde_derive;
 
 use serde::de::*;
 use serde::Deserializer;
+use serde_repr::{Deserialize_repr, Serialize_repr};
 use std::fmt;
 use std::io;
 
@@ -190,19 +191,24 @@ pub struct Device {
 }
 
 /// Type of GPS fix.
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Deserialize_repr)]
+#[cfg_attr(feature = "serialize", derive(Serialize_repr))]
+#[repr(u8)]
 pub enum Mode {
+    /// Unknown.
+    Unknown = 0,
     /// No fix at all.
-    NoFix,
+    NoFix = 1,
     /// Two dimensional fix, 2D.
-    Fix2d,
+    Fix2d = 2,
     /// Three dimensional fix, 3D (i.e. with altitude).
-    Fix3d,
+    Fix3d = 3,
 }
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Mode::Unknown => write!(f, "Unknown"),
             Mode::NoFix => write!(f, "NoFix"),
             Mode::Fix2d => write!(f, "2d"),
             Mode::Fix3d => write!(f, "3d"),
@@ -210,15 +216,47 @@ impl fmt::Display for Mode {
     }
 }
 
-fn mode_from_str<'de, D>(deserializer: D) -> Result<Mode, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let s = u8::deserialize(deserializer)?;
-    match s {
-        2 => Ok(Mode::Fix2d),
-        3 => Ok(Mode::Fix3d),
-        _ => Ok(Mode::NoFix),
+/// GPS fix status
+#[derive(Debug, Copy, Clone, Deserialize_repr)]
+#[cfg_attr(feature = "serialize", derive(Serialize_repr))]
+#[repr(u8)]
+pub enum Status {
+    /// Unknown status
+    Unknown = 0,
+    /// Plain GPS (SPS mode)
+    Normal = 1,
+    /// Differential GPS
+    Dgps = 2,
+    /// RTK fixed
+    RtkFixed = 3,
+    /// RTK floating
+    RtkFloating = 4,
+    /// Dead reckoning
+    Dr = 5,
+    /// GNNS + dead reckoning
+    Gnssdr = 6,
+    /// Time only (surveyed in, manual)
+    Time = 7,
+    /// Simulated
+    Simulated = 8,
+    /// Encrypted military P(Y)-code
+    Py = 9,
+}
+
+impl fmt::Display for Status {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Status::Unknown => write!(f, "Unknown"),
+            Status::Normal => write!(f, "Normal"),
+            Status::Dgps => write!(f, "DGPS"),
+            Status::RtkFixed => write!(f, "RTK fixed"),
+            Status::RtkFloating => write!(f, "RTK floating"),
+            Status::Dr => write!(f, "DR"),
+            Status::Gnssdr => write!(f, "GNSSDR"),
+            Status::Time => write!(f, "Time (surveyed)"),
+            Status::Simulated => write!(f, "Simulated"),
+            Status::Py => write!(f, "P(Y)"),
+        }
     }
 }
 
@@ -235,9 +273,8 @@ pub struct Tpv {
     /// Name of the originating device.
     pub device: Option<String>,
     /// GPS fix status.
-    pub status: Option<i32>,
+    pub status: Option<Status>,
     /// NMEA mode, see `Mode` enum.
-    #[serde(deserialize_with = "mode_from_str")]
     pub mode: Mode,
     /// Time/date stamp in ISO8601 format, UTC. May have a
     /// fractional part of up to .001sec precision. May be absent
@@ -587,9 +624,7 @@ pub fn handshake(
                 w.json.unwrap_or(false),
                 w.nmea.unwrap_or(false),
             ) {
-                return Err(GpsdError::WatchFail(
-                    String::from_utf8(data).unwrap(),
-                ));
+                return Err(GpsdError::WatchFail(String::from_utf8(data).unwrap()));
             }
         }
         _ => {
@@ -618,7 +653,7 @@ pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError>
 
 #[cfg(test)]
 mod tests {
-    use super::{get_data, handshake, GpsdError, Mode, ResponseData, ENABLE_WATCH_CMD};
+    use super::{get_data, handshake, GpsdError, Mode, ResponseData, Status, ENABLE_WATCH_CMD};
     use std::io::BufWriter;
 
     #[test]
@@ -722,8 +757,29 @@ mod tests {
 
     #[test]
     fn mode_to_string() {
+        assert_eq!("Unknown", Mode::Unknown.to_string());
         assert_eq!("NoFix", Mode::NoFix.to_string());
         assert_eq!("2d", Mode::Fix2d.to_string());
         assert_eq!("3d", Mode::Fix3d.to_string());
+    }
+
+    #[test]
+    fn get_data_tpv_with_status() {
+        let mut reader: &[u8] =
+            b"{\"class\":\"TPV\",\"mode\":3,\"status\":1,\"lat\":66.123}\x0d\x0a";
+        let r = get_data(&mut reader).unwrap();
+        let test = match r {
+            ResponseData::Tpv(tpv) => {
+                assert!(match tpv.mode {
+                    Mode::Fix3d => true,
+                    _ => false,
+                });
+                assert!(matches!(tpv.status.unwrap(), Status::Normal));
+                assert_eq!(tpv.lat.unwrap(), 66.123);
+                Ok(())
+            }
+            _ => Err(()),
+        };
+        assert_eq!(test, Ok(()));
     }
 }
