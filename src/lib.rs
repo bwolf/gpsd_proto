@@ -96,8 +96,22 @@ pub struct DeviceInfo {
     /// omitted only when there is exactly one subscribed channel.
     pub path: Option<String>,
     /// Time the device was activated as an ISO8601 timestamp. If the
-    /// device is inactive this attribute is absent.
+    /// device is inactive this attribute is absent. Some older versions
+    /// of gpsd will sometimes give the integer 0 in this field, which
+    /// this library maps to `None`
+    #[serde(deserialize_with = "option_str_or_zero")]
     pub activated: Option<String>,
+}
+
+fn option_str_or_zero<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    if i64::deserialize(deserializer).is_ok_and(|i| i == 0) {
+        Ok(None)
+    } else {
+        Option::<String>::deserialize(deserializer)
+    }
 }
 
 /// Watch response. Elicits a report of per-subscriber policy.
