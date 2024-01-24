@@ -806,6 +806,7 @@ pub enum ResponseData {
     /// the GPS time as derived from the GPS PPS pulse.
     Toff(Pps),
     Osc(Osc),
+    Poll(Poll),
 }
 
 /// All known `gpsd` responses (handshake + normal operation).
@@ -840,6 +841,7 @@ pub enum UnifiedResponse {
     /// the GPS serial data stream. The PPS message reports
     /// the GPS time as derived from the GPS PPS pulse.
     Toff(Pps),
+    Osc(Osc),
     Poll(Poll),
 }
 
