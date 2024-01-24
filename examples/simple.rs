@@ -1,10 +1,11 @@
 #[macro_use]
 extern crate log;
 
-use gpsd_proto::{get_data, handshake, GpsdError, ResponseData};
-use itertools::Itertools;
 use std::io;
 use std::net::TcpStream;
+
+use gpsd_proto::{get_data, handshake, GpsdError, ResponseData};
+use itertools::Itertools;
 
 pub fn demo_forever<R>(
     reader: &mut dyn io::BufRead,
@@ -76,6 +77,7 @@ where
                     g.lat.unwrap_or(0.), g.lon.unwrap_or(0.), g.alt.unwrap_or(0.),
                 );
             }
+            other => println!("Unexpected message {:#?}", other),
         }
     }
 }
