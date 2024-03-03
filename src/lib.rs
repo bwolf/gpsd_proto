@@ -649,7 +649,7 @@ pub struct Pps {
     /// Nanoseconds from the system clock.
     pub clock_nsec: f32,
     /// NTP style estimate of PPS precision.
-    pub precision: f32,
+    pub precision: Option<f32>,
     /// shm key of this PPS
     pub shm: Option<String>,
     /// Quantization error of the pps, in picoseconds. Sometimes called the
@@ -843,6 +843,8 @@ pub enum UnifiedResponse {
     Toff(Pps),
     Osc(Osc),
     Poll(Poll),
+    /// The SUBFRAME message is essentially arbitrary data which can vary based on your choice of GPS
+    Subframe(serde_json::Value),
 }
 
 /// Errors during handshake or data acquisition.

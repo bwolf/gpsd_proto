@@ -64,7 +64,7 @@ where
             }
             ResponseData::Pps(p) => {
                 println!(
-                    "PPS {} real: {} s {} ns clock: {} s {} ns precision: {}",
+                    "PPS {} real: {} s {} ns clock: {} s {} ns precision: {:?}",
                     p.device, p.real_sec, p.real_nsec, p.clock_sec, p.clock_nsec, p.precision,
                 );
             }
