@@ -27,6 +27,7 @@ directory. Check the repository for up to date sample code.
 
 `gpsd_proto` has been tested against `gpsd` version 3.17 on macOS and Linux with these devices:
 
+- [Adafruit Ultimate GPS Breakout - PA1616S](https://www.adafruit.com/product/746)
 - [Quectel EC25 Mini](https://www.quectel.com/product/ec25minipcie.htm) PCIe 4G/LTE Module
 - [u-blox MAX-M8Q](https://www.u-blox.com/en/product/max-m8-series)
 - GPS mice (Adopt SkyTraQ Venus 8)
