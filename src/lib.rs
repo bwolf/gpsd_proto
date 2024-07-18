@@ -25,6 +25,21 @@
 //! protocol](http://www.catb.org/gpsd/gpsd_json.html) and the [client
 //! HOWTO](http://catb.org/gpsd/client-howto.html).
 //!
+//! ## Historic Links
+//!
+//! The GPSD documentation is only valid for the most recent version,
+//! and does not reflect changes from previous versions. The links
+//! below are convenience links to wayback machine entries for
+//! specific versions of the gpsd_json documentation.
+//!
+//! - gpsd_json 3.17: https://web.archive.org/web/20171211092731/http://www.catb.org/gpsd/gpsd_json.html
+//! - gpsd_json 3.20: https://web.archive.org/web/20200512073259/https://gpsd.gitlab.io/gpsd/gpsd_json.html
+//!
+//! (some amount of guesswork was required here, based on the tag
+//! dates in the gpsd repository. For example 3.17 was released sept
+//! 2017, 3.18 was oct 2018, and the wayback link is from between
+//! those dates.)
+//!
 //! # Development notes
 //!
 //! Start `gpsd` with a real GPS device:
@@ -39,7 +54,8 @@
 //! /usr/local/sbin/gpsd -N -D2 tcp://192.168.177.147:11123
 //! ```
 //!
-//! Test the connection to `gpsd` with `telnet localhost 2947` and send the string:
+//! Test the connection to `gpsd` with `telnet localhost 2947` and send the
+//! string:
 //!
 //! ```text
 //! ?WATCH={"enable":true,"json":true};
@@ -51,10 +67,12 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
+use std::{fmt, io};
+
 use serde::de::*;
 use serde::Deserializer;
-use std::fmt;
-use std::io;
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Serializer};
 
 /// Minimum supported version of `gpsd`.
 pub const PROTO_MAJOR_MIN: u8 = 3;
@@ -84,6 +102,7 @@ pub struct Version {
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 pub struct Devices {
+    /// List of devices.
     pub devices: Vec<DeviceInfo>,
 }
 
@@ -96,13 +115,69 @@ pub struct DeviceInfo {
     /// omitted only when there is exactly one subscribed channel.
     pub path: Option<String>,
     /// Time the device was activated as an ISO8601 timestamp. If the
-    /// device is inactive this attribute is absent.
+    /// device is inactive this attribute is absent. Some older versions
+    /// of gpsd will sometimes give the integer 0 in this field, which
+    /// this library maps to `None`
+    #[serde(default, deserialize_with = "option_str_or_zero")]
     pub activated: Option<String>,
+}
+
+// This might look familiar: https://serde.rs/string-or-struct.html
+fn option_str_or_zero<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct OptionOrZero;
+
+    impl<'de> Visitor<'de> for OptionOrZero {
+        type Value = Option<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("nothing, string or integer 0")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Option<String>, E>
+        where
+            E: Error,
+        {
+            Ok(Some(value.to_string()))
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Option<String>, E>
+        where
+            E: Error,
+        {
+            if value == 0 {
+                Ok(None)
+            } else {
+                Err(Error::invalid_value(Unexpected::Signed(value), &self))
+            }
+        }
+        fn visit_u64<E>(self, value: u64) -> Result<Option<String>, E>
+        where
+            E: Error,
+        {
+            if value == 0 {
+                Ok(None)
+            } else {
+                Err(Error::invalid_value(Unexpected::Unsigned(value), &self))
+            }
+        }
+    }
+    deserializer.deserialize_any(OptionOrZero)
 }
 
 /// Watch response. Elicits a report of per-subscriber policy.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Watch {
     /// Enable (true) or disable (false) watcher mode. Default is
     /// true.
@@ -135,6 +210,40 @@ pub struct Watch {
     /// PPS JSON message when the device issues 1PPS. Default is
     /// false.
     pub pps: Option<bool>,
+    /// If present, enable watching only of the specified device
+    /// rather than all devices. Useful with raw and NMEA modes
+    /// in which device responses aren’t tagged. Has no effect
+    /// when used with enable:false.
+    pub device: Option<String>,
+}
+
+/// The POLL command requests data from the last-seen fixes on all active GPS
+/// devices. Devices must previously have been activated by ?WATCH to be
+/// pollable.
+
+/// Polling can lead to possibly surprising results when it is used on a device
+/// such as an NMEA GPS for which a complete fix has to be accumulated from
+/// several sentences. If you poll while those sentences are being emitted, the
+/// response will contain only the fix data collected so far in the current
+/// epoch. It may be as much as one cycle time (typically 1 second) stale.
+
+/// The POLL response will contain a timestamped list of TPV objects describing
+/// cached data, and a timestamped list of SKY objects describing satellite
+/// configuration. If a device has not seen fixes, it will be reported with a
+/// mode field of zero.
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
+pub struct Poll {
+    /// Timestamp in ISO8601 format, UTC. May have a fractional part
+    /// of up to .001sec precision.
+    pub time: Option<String>,
+    /// Count of active devices.
+    pub active: u32,
+    /// List of TPV Objects
+    pub tpv: Vec<Tpv>,
+    /// List of SKY Objects
+    pub sky: Vec<Sky>,
 }
 
 /// Responses from `gpsd` during handshake..
@@ -142,6 +251,7 @@ pub struct Watch {
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
 #[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
 pub enum ResponseHandshake {
     Version(Version),
     Devices(Devices),
@@ -151,6 +261,7 @@ pub enum ResponseHandshake {
 /// Device information.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Device {
     /// Name the device for which the control bits are being
     /// reported, or for which they are to be applied. This
@@ -158,7 +269,10 @@ pub struct Device {
     /// subscribed channel.
     pub path: Option<String>,
     /// Time the device was activated as an ISO8601 timestamp. If
-    /// the device is inactive this attribute is absent.
+    /// the device is inactive this attribute is absent. Some
+    /// older versions of gpsd will sometimes give the integer 0
+    /// in this field, which this library maps to `None`
+    #[serde(default, deserialize_with = "option_str_or_zero")]
     pub activated: Option<String>,
     /// Bit vector of property flags. Currently defined flags are:
     /// describe packet types seen so far (GPS, RTCM2, RTCM3,
@@ -191,6 +305,7 @@ pub struct Device {
 
 /// Type of GPS fix.
 #[derive(Debug, Copy, Clone)]
+#[non_exhaustive]
 pub enum Mode {
     /// No fix at all.
     NoFix,
@@ -206,6 +321,20 @@ impl fmt::Display for Mode {
             Mode::NoFix => write!(f, "NoFix"),
             Mode::Fix2d => write!(f, "2d"),
             Mode::Fix3d => write!(f, "3d"),
+        }
+    }
+}
+
+#[cfg(feature = "serialize")]
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Mode::NoFix => serializer.serialize_i32(1),
+            Mode::Fix2d => serializer.serialize_i32(2),
+            Mode::Fix3d => serializer.serialize_i32(3),
         }
     }
 }
@@ -231,6 +360,7 @@ where
 /// be reported or not depending on the fix quality.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Tpv {
     /// Name of the originating device.
     pub device: Option<String>,
@@ -250,10 +380,12 @@ pub struct Tpv {
     /// MSL altitude in meters.
     #[serde(rename = "altMSL")]
     pub alt_msl: Option<f32>,
-    /// Altitude height above ellipsoid (elipsoid is unspecified, but probably WGS48)
+    /// Altitude height above ellipsoid (elipsoid is unspecified, but probably
+    /// WGS48)
     #[serde(rename = "altHAE")]
     pub alt_hae: Option<f32>,
-    /// Geoid separation between whatever geoid the device uses and WGS84, in metres
+    /// Geoid separation between whatever geoid the device uses and WGS84, in
+    /// metres
     #[serde(rename = "geoidSep")]
     pub geoid_sep: Option<f32>,
     /// Latitude in degrees: +/- signifies North/South. Present
@@ -291,11 +423,80 @@ pub struct Tpv {
     pub epc: Option<f32>,
     /// Horizontal 2D position error in meters.
     pub eph: Option<f32>,
+    /// Current Datum. Hopefully WGS84.
+    pub datum: Option<String>,
+    /// Depth in meters.
+    pub depth: Option<f32>,
+    /// Age of DGPS Data in seconds
+    #[serde(rename = "dgpsAge")]
+    pub dgps_age: Option<f32>,
+    /// ID of DGPS station
+    #[serde(rename = "dgpsSta")]
+    pub dgps_sta: Option<i32>,
+    /// Course over ground, degrees magnetic.
+    pub magtrack: Option<f32>,
+    /// Magnetic variation, degrees. Also known as the magnetic
+    /// declination (the direction of the horizontal component
+    /// of the magnetic field measured clockwise from north)
+    /// in degrees, Positive is West variation. Negative is
+    /// East variation.
+    pub magvar: Option<f32>,
+    /// ECEF X Position in meters.
+    pub ecefx: Option<f32>,
+    /// ECEF Y Position in meters.
+    pub ecefy: Option<f32>,
+    /// ECEF Z Position in meters.
+    pub ecefz: Option<f32>,
+    /// ECEF Position error in meters.
+    #[serde(rename = "ecefpAcc")]
+    pub ecef_p_acc: Option<f32>,
+    /// ECEF X velocity in meters per second.
+    pub ecefvx: Option<f32>,
+    /// ECEF Y velocity in meters per second.
+    pub ecefvy: Option<f32>,
+    /// ECEF Z velocity in meters per second.
+    pub ecefvz: Option<f32>,
+    /// ECEF velocity error in meters per second.
+    #[serde(rename = "ecefvAcc")]
+    pub ecef_v_acc: Option<f32>,
+    /// Estimated Spherical (3D) Position Error in meters.
+    pub sep: Option<f32>,
+    /// Down component of relative position vector in meters.
+    #[serde(rename = "relD")]
+    pub rel_d: Option<f32>,
+    /// East component of relative position vector in meters.
+    #[serde(rename = "relE")]
+    pub rel_e: Option<f32>,
+    /// North component of relative position vector in meters.
+    #[serde(rename = "relN")]
+    pub rel_n: Option<f32>,
+    /// Down velocity component in meters.
+    #[serde(rename = "velD")]
+    pub vel_d: Option<f32>,
+    /// East velocity component in meters.
+    #[serde(rename = "velE")]
+    pub vel_e: Option<f32>,
+    /// North velocity component in meters.
+    #[serde(rename = "velN")]
+    pub vel_n: Option<f32>,
+    /// Wind angle magnetic in degrees.
+    pub wanglem: Option<f32>,
+    /// Wind angle relative in degrees.
+    pub wangler: Option<f32>,
+    /// Wind angle true in degrees.
+    pub wanglet: Option<f32>,
+    /// Wind speed relative in meters per second.
+    pub wspeedr: Option<f32>,
+    /// Wind speed true in meters per second.
+    pub wspeedt: Option<f32>,
+    /// Water temperature in degrees Celsius.
+    pub wtemp: Option<f32>,
 }
 
 /// Detailed satellite information.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Satellite {
     /// PRN ID of the satellite. 1-63 are GNSS satellites, 64-96 are
     /// GLONASS satellites, 100-164 are SBAS satellites.
@@ -311,8 +512,20 @@ pub struct Satellite {
     /// flagged used if the solution has corrections from them, but
     /// not all drivers make this information available.).
     pub used: bool,
+    /// The GNSS ID, as defined by u-blox, not NMEA. 0=GPS, 2=Galileo,
+    /// 3=Beidou, 5=QZSS, 6-GLONASS.
     pub gnssid: Option<u8>,
+    /// The satellite ID within its constellation. As defined by
+    /// u-blox, not NMEA).
     pub svid: Option<u16>,
+    /// The signal ID of this signal. As defined by u-blox,
+    /// not NMEA. See u-blox doc for details.
+    pub sigid: Option<u16>,
+    /// For GLONASS satellites only: the frequency ID of the
+    /// signal. As defined by u-blox, range 0 to 13. The freqid
+    /// is the frequency slot plus 7.
+    pub freqid: Option<u16>,
+    /// The health of this satellite. 0 is unknown, 1 is OK, and 2 is unhealthy.
     pub health: Option<u8>,
 }
 
@@ -335,6 +548,7 @@ pub struct Satellite {
 /// calculation.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Sky {
     /// Name of originating device.
     pub device: Option<String>,
@@ -368,6 +582,20 @@ pub struct Sky {
     pub pdop: Option<f32>,
     /// List of satellite objects in skyview.
     pub satellites: Option<Vec<Satellite>>,
+    /// Number of satellites in "satellites" array
+    #[serde(rename = "nSat")]
+    pub n_sat: Option<u32>,
+    /// Pseudorange Residue in meters.
+    #[serde(rename = "prRes")]
+    pub pr_res: Option<f32>,
+    /// Quality indicator
+    pub qual: Option<u8>,
+    /// Time/date stamp in ISO8601 format, UTC. May have a
+    /// fractional part of up to .001sec precision.
+    pub time: Option<String>,
+    /// Number of satellites used in navigation solution.
+    #[serde(rename = "uSat")]
+    pub u_sat: Option<u32>,
 }
 
 /// This message is emitted each time the daemon sees a valid PPS (Pulse Per
@@ -408,6 +636,7 @@ pub struct Sky {
 /// about 1 millisecond.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Pps {
     /// Name of originating device.
     pub device: String,
@@ -420,12 +649,19 @@ pub struct Pps {
     /// Nanoseconds from the system clock.
     pub clock_nsec: f32,
     /// NTP style estimate of PPS precision.
-    pub precision: f32,
+    pub precision: Option<f32>,
+    /// shm key of this PPS
+    pub shm: Option<String>,
+    /// Quantization error of the pps, in picoseconds. Sometimes called the
+    /// "sawtooth" error
+    #[serde(rename = "qErr")]
+    pub q_err: Option<f32>,
 }
 
 /// Pseudorange noise report.
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
 pub struct Gst {
     /// Name of originating device.
     pub device: Option<String>,
@@ -450,17 +686,127 @@ pub struct Gst {
     pub alt: Option<f32>,
 }
 
+/// An ATT object is a vehicle-attitude report. It is returned by
+/// digital-compass and gyroscope sensors; depending on device, it may include:
+/// heading, pitch, roll, yaw, gyroscope, and magnetic-field readings. Because
+/// such sensors are often bundled as part of marine-navigation systems, the ATT
+/// response may also include water depth.
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
+pub struct Att {
+    /// Name of originating device.
+    pub device: Option<String>,
+    /// Time/date stamp in ISO8601 format, UTC. May have a fractional part of up
+    /// to .001 sec precision.
+    pub time: Option<String>,
+    /// Arbitrary time tag of measurement
+    #[serde(rename = "timeTag")]
+    pub time_tag: Option<String>,
+    /// Heading, degrees from true north.
+    pub heading: Option<f32>,
+    /// Magnetometer status
+    pub mag_st: Option<String>,
+    /// Heading, degrees from magnetic north.
+    pub mheading: Option<f32>,
+    /// Pitch, in degrees.
+    pub pitch: Option<f32>,
+    /// Pitch sensor status
+    pub pitch_st: Option<String>,
+    /// Rate of turn in degrees per minute.
+    pub rot: Option<f32>,
+    /// Yaw, in degrees.
+    pub yaw: Option<f32>,
+    /// Yaw sensor status
+    pub yaw_st: Option<String>,
+    /// Roll, in degrees.
+    pub roll: Option<f32>,
+    /// Roll sensor status
+    pub roll_st: Option<String>,
+    /// Local magnetic inclination, degrees, positive when the magnetic field
+    /// points downward (into the Earth).
+    pub dip: Option<f32>,
+    /// Scalar magnetic field strength.
+    pub mag_len: Option<f32>,
+    /// X component of magnetic field strength.
+    pub mag_x: Option<f32>,
+    /// Y component of magnetic field strength.
+    pub mag_y: Option<f32>,
+    /// Z component of magnetic field strength.
+    pub mag_z: Option<f32>,
+    /// Scalar acceleration
+    pub acc_len: Option<f32>,
+    /// X component of acceleration (m/s^2)
+    pub acc_x: Option<f32>,
+    /// Y component of acceleration
+    pub acc_y: Option<f32>,
+    /// Z component of acceleration
+    pub acc_z: Option<f32>,
+    /// X component of angular rate (deg/s)
+    pub gyro_x: Option<f32>,
+    /// Y component of angular rate
+    pub gyro_y: Option<f32>,
+    /// Z component of angular rate
+    pub gyro_z: Option<f32>,
+    /// Water depth, in meters.
+    pub depth: Option<f32>,
+    /// Temperature at the sensor, degrees centigrade.
+    pub temp: Option<f32>,
+}
+
+/// This message reports the status of a GPS-disciplined oscillator (GPSDO).
+/// The GPS PPS output (which has excellent long-term stability) is
+/// typically used to discipline a local oscillator with much better
+/// short-term stability (such as a rubidium atomic clock).
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+#[non_exhaustive]
+pub struct Osc {
+    /// Name of originating device.
+    pub device: Option<String>,
+    /// If true, the oscillator is currently running.
+    pub running: bool,
+    /// If true, the oscillator is receiving a GPS PPS Signal
+    pub reference: bool,
+    /// If true, the GPS PPS signal is sufficiently stable and is being
+    /// used to discipline the local oscillator.
+    pub disciplined: bool,
+    /// The time difference (in nanoseconds) between the GPS-disciplined
+    /// oscillator PPS output pulse and the most recent GPS PPS input pulse.
+    pub delta: u32,
+}
+
 /// Responses from `gpsd` after handshake (i.e. the payload)
 #[derive(Debug, Deserialize, Clone)]
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
 #[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
 pub enum ResponseData {
     Device(Device),
     Tpv(Tpv),
     Sky(Sky),
     Pps(Pps),
     Gst(Gst),
+    Att(Att),
+    /// The IMU object is asynchronous to the GNSS epoch. It is
+    /// reported with arbitrary, even out of order, time scales.
+    /// The ATT and IMU objects have the same fields, but IMU
+    /// objects are output as soon as possible.
+    Imu(Att),
+    /// This message is emitted on each cycle and reports the
+    /// offset between the host’s clock time and the GPS time
+    /// at top of the second (actually, when the first data
+    /// for the reporting cycle is received).
+    ///
+    /// This message exactly mirrors the PPS message.
+    ///
+    /// The TOFF message reports the GPS time as derived from
+    /// the GPS serial data stream. The PPS message reports
+    /// the GPS time as derived from the GPS PPS pulse.
+    Toff(Pps),
+    Osc(Osc),
+    Poll(Poll),
 }
 
 /// All known `gpsd` responses (handshake + normal operation).
@@ -468,6 +814,7 @@ pub enum ResponseData {
 #[cfg_attr(feature = "serialize", derive(Serialize))]
 #[serde(tag = "class")]
 #[serde(rename_all = "UPPERCASE")]
+#[non_exhaustive]
 pub enum UnifiedResponse {
     Version(Version),
     Devices(Devices),
@@ -477,10 +824,32 @@ pub enum UnifiedResponse {
     Sky(Sky),
     Pps(Pps),
     Gst(Gst),
+    Att(Att),
+    /// The IMU object is asynchronous to the GNSS epoch. It is
+    /// reported with arbitrary, even out of order, time scales.
+    /// The ATT and IMU objects have the same fields, but IMU
+    /// objects are output as soon as possible.
+    Imu(Att),
+    /// This message is emitted on each cycle and reports the
+    /// offset between the host’s clock time and the GPS time
+    /// at top of the second (actually, when the first data
+    /// for the reporting cycle is received).
+    ///
+    /// This message exactly mirrors the PPS message.
+    ///
+    /// The TOFF message reports the GPS time as derived from
+    /// the GPS serial data stream. The PPS message reports
+    /// the GPS time as derived from the GPS PPS pulse.
+    Toff(Pps),
+    Osc(Osc),
+    Poll(Poll),
+    /// The SUBFRAME message is essentially arbitrary data which can vary based on your choice of GPS
+    Subframe(serde_json::Value),
 }
 
 /// Errors during handshake or data acquisition.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum GpsdError {
     /// Generic I/O error.
     IoError(io::Error),
@@ -587,9 +956,7 @@ pub fn handshake(
                 w.json.unwrap_or(false),
                 w.nmea.unwrap_or(false),
             ) {
-                return Err(GpsdError::WatchFail(
-                    String::from_utf8(data).unwrap(),
-                ));
+                return Err(GpsdError::WatchFail(String::from_utf8(data).unwrap()));
             }
         }
         _ => {
@@ -618,8 +985,11 @@ pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError>
 
 #[cfg(test)]
 mod tests {
-    use super::{get_data, handshake, GpsdError, Mode, ResponseData, ENABLE_WATCH_CMD};
     use std::io::BufWriter;
+
+    use super::{
+        get_data, handshake, GpsdError, Mode, ResponseData, UnifiedResponse, ENABLE_WATCH_CMD,
+    };
 
     #[test]
     fn handshake_ok() {
@@ -684,10 +1054,7 @@ mod tests {
         let r = get_data(&mut reader).unwrap();
         let test = match r {
             ResponseData::Tpv(tpv) => {
-                assert!(match tpv.mode {
-                    Mode::Fix3d => true,
-                    _ => false,
-                });
+                assert!(matches!(tpv.mode, Mode::Fix3d));
                 assert_eq!(tpv.lat.unwrap(), 66.123);
                 Ok(())
             }
@@ -709,7 +1076,7 @@ mod tests {
                 assert_eq!(actual.el, Some(1.));
                 assert_eq!(actual.az, Some(2.));
                 assert_eq!(actual.ss, Some(3.));
-                assert_eq!(actual.used, true);
+                assert!(actual.used);
                 assert_eq!(actual.gnssid, Some(1));
                 assert_eq!(actual.svid, Some(271));
                 assert_eq!(actual.health, Some(1));
@@ -725,5 +1092,39 @@ mod tests {
         assert_eq!("NoFix", Mode::NoFix.to_string());
         assert_eq!("2d", Mode::Fix2d.to_string());
         assert_eq!("3d", Mode::Fix3d.to_string());
+    }
+
+    fn unwrap_device(data: UnifiedResponse) -> crate::Devices {
+        match data {
+            UnifiedResponse::Devices(d) => d,
+            _ => panic!("Unexpected response"),
+        }
+    }
+
+    #[test]
+    fn test_device_activated_zero_value() {
+        let data: &[u8] =
+            b"{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":0}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":\"2024-01-10T11:36:48.480Z\"}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\"}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":1}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":false}]}";
+        let mut rdr = data.split(|b| *b == b'\n');
+
+        let ok_zero = unwrap_device(serde_json::from_slice(rdr.next().unwrap()).unwrap());
+        assert_eq!(ok_zero.devices[0].activated, None);
+
+        let ok_timestamp = unwrap_device(serde_json::from_reader(rdr.next().unwrap()).unwrap());
+        assert_eq!(
+            ok_timestamp.devices[0].activated,
+            Some("2024-01-10T11:36:48.480Z".to_string())
+        );
+
+        let ok_not_present = unwrap_device(serde_json::from_reader(rdr.next().unwrap()).unwrap());
+        assert_eq!(ok_not_present.devices[0].activated, None);
+
+        assert!(serde_json::from_reader::<_, UnifiedResponse>(rdr.next().unwrap()).is_err());
+
+        assert!(serde_json::from_reader::<_, UnifiedResponse>(rdr.next().unwrap()).is_err());
     }
 }
