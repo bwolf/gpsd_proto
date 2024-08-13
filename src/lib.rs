@@ -96,8 +96,63 @@ pub struct DeviceInfo {
     /// omitted only when there is exactly one subscribed channel.
     pub path: Option<String>,
     /// Time the device was activated as an ISO8601 timestamp. If the
-    /// device is inactive this attribute is absent.
+    /// device is inactive this attribute is absent. Some older versions
+    /// of gpsd will sometimes give the integer 0 in this field, which
+    /// this library maps to `None`
+    #[serde(default, deserialize_with = "option_str_or_zero")]
     pub activated: Option<String>,
+}
+
+// This might look familiar: https://serde.rs/string-or-struct.html
+fn option_str_or_zero<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct OptionOrZero;
+
+    impl<'de> Visitor<'de> for OptionOrZero {
+        type Value = Option<String>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("nothing, string or integer 0")
+        }
+
+        fn visit_str<E>(self, value: &str) -> Result<Option<String>, E>
+        where
+            E: Error,
+        {
+            Ok(Some(value.to_string()))
+        }
+
+        fn visit_none<E>(self) -> Result<Self::Value, E>
+        where
+            E: Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_i64<E>(self, value: i64) -> Result<Option<String>, E>
+        where
+            E: Error,
+        {
+            if value == 0 {
+                Ok(None)
+            } else {
+                Err(Error::invalid_value(Unexpected::Signed(value), &self))
+            }
+        }
+        fn visit_u64<E>(self, value: u64) -> Result<Option<String>, E>
+        where
+            E: Error,
+        {
+            if value == 0 {
+                Ok(None)
+            } else {
+                Err(Error::invalid_value(Unexpected::Unsigned(value), &self))
+            }
+        }
+    }
+    deserializer.deserialize_any(OptionOrZero)
 }
 
 /// Watch response. Elicits a report of per-subscriber policy.
@@ -158,7 +213,10 @@ pub struct Device {
     /// subscribed channel.
     pub path: Option<String>,
     /// Time the device was activated as an ISO8601 timestamp. If
-    /// the device is inactive this attribute is absent.
+    /// the device is inactive this attribute is absent. Some
+    /// older versions of gpsd will sometimes give the integer 0
+    /// in this field, which this library maps to `None`
+    #[serde(default, deserialize_with = "option_str_or_zero")]
     pub activated: Option<String>,
     /// Bit vector of property flags. Currently defined flags are:
     /// describe packet types seen so far (GPS, RTCM2, RTCM3,
@@ -587,9 +645,7 @@ pub fn handshake(
                 w.json.unwrap_or(false),
                 w.nmea.unwrap_or(false),
             ) {
-                return Err(GpsdError::WatchFail(
-                    String::from_utf8(data).unwrap(),
-                ));
+                return Err(GpsdError::WatchFail(String::from_utf8(data).unwrap()));
             }
         }
         _ => {
@@ -618,7 +674,9 @@ pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError>
 
 #[cfg(test)]
 mod tests {
-    use super::{get_data, handshake, GpsdError, Mode, ResponseData, ENABLE_WATCH_CMD};
+    use super::{
+        get_data, handshake, GpsdError, Mode, ResponseData, UnifiedResponse, ENABLE_WATCH_CMD,
+    };
     use std::io::BufWriter;
 
     #[test]
@@ -725,5 +783,39 @@ mod tests {
         assert_eq!("NoFix", Mode::NoFix.to_string());
         assert_eq!("2d", Mode::Fix2d.to_string());
         assert_eq!("3d", Mode::Fix3d.to_string());
+    }
+
+    fn unwrap_device(data: UnifiedResponse) -> crate::Devices {
+        match data {
+            UnifiedResponse::Devices(d) => d,
+            _ => panic!("Unexpected response"),
+        }
+    }
+
+    #[test]
+    fn test_device_activated_zero_value() {
+        let data: &[u8] =
+            b"{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":0}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":\"2024-01-10T11:36:48.480Z\"}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\"}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":1}]}
+{\"class\":\"DEVICES\",\"devices\":[{\"path\":\"/dev/gps\",\"activated\":false}]}";
+        let mut rdr = data.split(|b| *b == b'\n');
+
+        let ok_zero = unwrap_device(serde_json::from_slice(rdr.next().unwrap()).unwrap());
+        assert_eq!(ok_zero.devices[0].activated, None);
+
+        let ok_timestamp = unwrap_device(serde_json::from_reader(rdr.next().unwrap()).unwrap());
+        assert_eq!(
+            ok_timestamp.devices[0].activated,
+            Some("2024-01-10T11:36:48.480Z".to_string())
+        );
+
+        let ok_not_present = unwrap_device(serde_json::from_reader(rdr.next().unwrap()).unwrap());
+        assert_eq!(ok_not_present.devices[0].activated, None);
+
+        assert!(serde_json::from_reader::<_, UnifiedResponse>(rdr.next().unwrap()).is_err());
+
+        assert!(serde_json::from_reader::<_, UnifiedResponse>(rdr.next().unwrap()).is_err());
     }
 }

@@ -16,7 +16,13 @@ where
     handshake(reader, writer)?;
 
     loop {
-        let msg = get_data(reader)?;
+        let msg = match get_data(reader) {
+            Ok(msg) => msg,
+            Err(e) => {
+                error!("Error: {:?}", e);
+                continue;
+            }
+        };
         match msg {
             ResponseData::Device(d) => {
                 debug!(
