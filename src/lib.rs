@@ -53,6 +53,9 @@ extern crate serde_derive;
 
 use serde::de::*;
 use serde::Deserializer;
+#[cfg(feature = "serialize")]
+use serde::{Serialize, Serializer};
+
 use std::fmt;
 use std::io;
 
@@ -206,6 +209,20 @@ impl fmt::Display for Mode {
             Mode::NoFix => write!(f, "NoFix"),
             Mode::Fix2d => write!(f, "2d"),
             Mode::Fix3d => write!(f, "3d"),
+        }
+    }
+}
+
+#[cfg(feature = "serialize")]
+impl Serialize for Mode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Mode::NoFix => serializer.serialize_i32(1),
+            Mode::Fix2d => serializer.serialize_i32(2),
+            Mode::Fix3d => serializer.serialize_i32(3),
         }
     }
 }
