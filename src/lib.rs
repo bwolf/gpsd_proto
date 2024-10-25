@@ -291,6 +291,10 @@ pub struct Tpv {
     pub epc: Option<f32>,
     /// Horizontal 2D position error in meters.
     pub eph: Option<f32>,
+    /// Course over ground, degrees magnetic.
+    pub magtrack: Option<f32>,
+    /// Magnetic variation, degrees.
+    pub magvar: Option<f32>,
 }
 
 /// Detailed satellite information.
