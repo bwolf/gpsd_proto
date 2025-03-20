@@ -11,21 +11,29 @@
     };
   };
 
-  outputs = { self, nixpkgs, naersk, fenix }:
+  outputs =
+    {
+      self,
+      nixpkgs,
+      naersk,
+      fenix,
+    }:
     let
       system = "x86_64-linux";
       pkgs = import nixpkgs { inherit system; };
 
       toolchain = fenix.packages.${system}.fromToolchainName {
         name = "stable";
-        sha256 = "sha256-rLP8+fTxnPHoR96ZJiCa/5Ans1OojI7MLsmSqR2ip8o=";
+        sha256 = "sha256-Hn2uaQzRLidAWpfmRwSRdImifGUCAb9HeAqTYFXWeQk=";
       };
 
-      package-name = (naersk.lib.${system}.override {
-        inherit (toolchain) cargo rustc;
-      }).buildPackage { src = ./.; };
-
-    in {
+      package-name =
+        (naersk.lib.${system}.override {
+          inherit (toolchain) cargo rustc;
+        }).buildPackage
+          { src = ./.; };
+    in
+    {
 
       packages.${system} = {
         default = package-name;
@@ -45,7 +53,6 @@
           fenix.packages.${system}.rust-analyzer
 
           pkgs.cargo-audit
-          pkgs.cargo-bloat
           pkgs.cargo-outdated
           pkgs.cargo-release
           pkgs.cargo-watch
