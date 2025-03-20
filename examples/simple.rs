@@ -3,8 +3,8 @@ extern crate log;
 
 use gpsd_proto::{get_data, handshake, GpsdError, ResponseData};
 use itertools::Itertools;
-use std::io;
-use std::net::TcpStream;
+use std::net::{SocketAddr, TcpStream};
+use std::{env, io};
 
 pub fn demo_forever<R>(
     reader: &mut dyn io::BufRead,
@@ -76,7 +76,15 @@ where
 
 fn main() {
     env_logger::init();
-    if let Ok(stream) = TcpStream::connect("127.0.0.1:2947") {
+
+    let gpsd_addr = env::var("GPSD_ADDR").unwrap_or("127.0.0.1".into());
+    let gpsd_port = env::var("GPSD_PORT").unwrap_or("2947".into());
+
+    info!("Connecting to gpsd {}:{}", gpsd_addr, gpsd_port);
+
+    let addr: SocketAddr = format!("{gpsd_addr}:{gpsd_port}").parse().unwrap();
+
+    if let Ok(stream) = TcpStream::connect(&addr) {
         info!("Connected to gpsd");
         let mut reader = io::BufReader::new(&stream);
         let mut writer = io::BufWriter::new(&stream);
