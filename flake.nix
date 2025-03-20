@@ -56,6 +56,8 @@
           pkgs.cargo-outdated
           pkgs.cargo-release
           pkgs.cargo-watch
+
+          pkgs.gpsd
         ];
         RUST_BACKTRACE = 1;
       };
