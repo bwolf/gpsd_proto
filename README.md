@@ -31,7 +31,18 @@ See the `examples` subdirectory for runnable demos.
 - Android app [GPSD Relay](https://github.com/project-kaat/gpsdRelay)
 - ... and many more :)
 
-Note regarding the mobile apps: These apps typically provide the raw GPS data, which gpsd can interpret. The setup requires to run the app on the mobile and to run gpsd on the PC to interpret that data, and to provide it to clients like gpsd_proto.
+Note regarding the mobile apps: These apps typically provide the raw GPS data (NMEA), which gpsd can interpret. The setup requires running the app on the mobile and to run gpsd on the PC to interpret that data, and to provide it to clients like gpsd_proto.
+
+``` text
+  +--------------+   TCP   +--------+   TCP   +-------------------+
+  |  gpsd_proto  | ------> |  gpsd  | ------> |  GPS relay (App)  |
+  +--------------+         +--------+         +-------------------+
+                               |  RS232/USB   +-------------------+
+                               `------------> |    Hardware GPS   |
+                                              +-------------------+
+```
+
+In the figure above gpsd_proto could be an application that uses gpsd_proto as a library to connect to gpsd, or it may be an example from this project like `examples/async.rs`.
 
 
 # Reference documentation
