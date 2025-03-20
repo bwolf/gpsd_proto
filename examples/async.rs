@@ -3,6 +3,7 @@ extern crate log;
 
 use futures::{future::ready, prelude::*};
 use gpsd_proto::UnifiedResponse;
+use std::env;
 use std::error::Error;
 use std::net::SocketAddr;
 use tokio::net::TcpStream;
@@ -11,9 +12,13 @@ use tokio_util::codec::{Framed, LinesCodec};
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> Result<(), Box<dyn Error>> {
     env_logger::init();
-    info!("Starting");
 
-    let addr: SocketAddr = "127.0.0.1:2947".parse().unwrap();
+    let gpsd_addr = env::var("GPSD_ADDR").unwrap_or("127.0.0.1".into());
+    let gpsd_port = env::var("GPSD_PORT").unwrap_or("2947".into());
+
+    info!("Connecting to gpsd {}:{}", gpsd_addr, gpsd_port);
+
+    let addr: SocketAddr = format!("{gpsd_addr}:{gpsd_port}").parse().unwrap();
 
     let stream = TcpStream::connect(&addr).await?;
     let mut framed = Framed::new(stream, LinesCodec::new());
