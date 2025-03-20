@@ -15,13 +15,9 @@ The `gpsd_proto` module contains types and functions to connect to
 [gpsd](http://catb.org/gpsd/) to get GPS coordinates and satellite
 information.
 
-`gpsd_proto` uses a plain TCP socket to connect to `gpsd`, reads
-and writes JSON messages. The main motivation to create this crate
-was independence from C libraries, like `libgps` (provided by
-`gpsd`) to ease cross compiling.
+`gpsd_proto` uses a plain TCP socket to connect to `gpsd`, reads and writes JSON messages. The main motivation to create this crate was independence from C libraries, like `libgps` (provided by `gpsd`) to ease cross compiling.
 
-A example demo application is provided in the `example` sub
-directory. Check the repository for up to date sample code.
+See the `examples` subdirectory for runnable demos.
 
 # Testing
 
@@ -32,9 +28,11 @@ directory. Check the repository for up to date sample code.
 - [u-blox MAX-M8Q](https://www.u-blox.com/en/product/max-m8-series)
 - GPS mice (Adopt SkyTraQ Venus 8)
 - iOS app [GPS2IP](http://www.capsicumdreams.com/iphone/gps2ip/).
+- Android app [GPSD Relay](https://github.com/project-kaat/gpsdRelay)
+- ... and many more :)
 
-Feel free to report any other supported GPS by opening a GitHub
-issue.
+Note regarding the mobile apps: These apps typically provide the raw GPS data, which gpsd can interpret. The setup requires to run the app on the mobile and to run gpsd on the PC to interpret that data, and to provide it to clients like gpsd_proto.
+
 
 # Reference documentation
 
