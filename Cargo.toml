@@ -2,7 +2,7 @@
 authors = ["Marcus Geiger"]
 description = "The gpsd_proto module contains types and functions to connect to gpsd to get GPS coordinates and satellite information."
 documentation = "https://docs.rs/gpsd_proto/"
-edition = "2021"
+edition = "2024"
 homepage = "https://github.com/bwolf/gpsd_proto.git"
 keywords = ["protocol", "gps"]
 license = "Apache-2.0"
@@ -25,8 +25,8 @@ serde_derive = "1.0"
 serde_json = "1.0"
 
 [dev-dependencies]
-itertools = "0.11"
-env_logger = "0.10"
+itertools = "0.14"
+env_logger = "0.11"
 futures = "0.3"
 tokio = { version = "1.33", features = ["rt", "macros", "net"] }
 tokio-util = { version = "0.7", features = ["codec"] }
