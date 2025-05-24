@@ -171,7 +171,7 @@ pub struct Device {
     /// Whatever version information the device returned.
     pub subtype: Option<String>,
     /// Device speed in bits per second.
-    pub bps: Option<u16>,
+    pub bps: Option<u32>,
     /// N, O or E for no parity, odd, or even.
     pub parity: Option<String>,
     /// Stop bits (1 or 2).
