@@ -538,7 +538,7 @@ impl fmt::Display for GpsdError {
 pub fn handshake(
     reader: &mut dyn io::BufRead,
     writer: &mut dyn io::Write,
-) -> Result<(), GpsdError> {
+) -> Result<Devices, GpsdError> {
     // Get VERSION
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
@@ -566,14 +566,16 @@ pub fn handshake(
     reader.read_until(b'\n', &mut data)?;
     trace!("{}", String::from_utf8(data.clone()).unwrap());
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
-    match msg {
-        ResponseHandshake::Devices(_) => {}
+    let devices = match msg {
+        ResponseHandshake::Devices(devices) => {
+            devices
+        }
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
                 String::from_utf8(data).unwrap(),
             ))
         }
-    }
+    };
 
     // Get WATCH
     let mut data = Vec::new();
@@ -599,7 +601,7 @@ pub fn handshake(
         }
     }
 
-    Ok(())
+    Ok(devices)
 }
 
 /// Get one payload entry from `gpsd`.
