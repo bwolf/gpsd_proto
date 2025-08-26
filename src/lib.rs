@@ -542,7 +542,7 @@ pub fn handshake(
     // Get VERSION
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    trace!("{}", String::from_utf8(data.clone()).unwrap());
+    trace!("{}", String::from_utf8_lossy(&data));
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Version(v) => {
@@ -552,7 +552,7 @@ pub fn handshake(
         }
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
-                String::from_utf8(data).unwrap(),
+                String::from_utf8_lossy(&data).into_owned(),
             ))
         }
     }
@@ -564,13 +564,13 @@ pub fn handshake(
     // Get DEVICES
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    trace!("{}", String::from_utf8(data.clone()).unwrap());
+    trace!("{}", String::from_utf8_lossy(&data));
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Devices(_) => {}
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
-                String::from_utf8(data).unwrap(),
+                String::from_utf8_lossy(&data).into_owned(),
             ))
         }
     }
@@ -578,7 +578,7 @@ pub fn handshake(
     // Get WATCH
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    trace!("{}", String::from_utf8(data.clone()).unwrap());
+    trace!("{}", String::from_utf8_lossy(&data));
     let msg: ResponseHandshake = serde_json::from_slice(&data)?;
     match msg {
         ResponseHandshake::Watch(w) => {
@@ -588,13 +588,13 @@ pub fn handshake(
                 w.nmea.unwrap_or(false),
             ) {
                 return Err(GpsdError::WatchFail(
-                    String::from_utf8(data).unwrap(),
+                    String::from_utf8_lossy(&data).into_owned(),
                 ));
             }
         }
         _ => {
             return Err(GpsdError::UnexpectedGpsdReply(
-                String::from_utf8(data).unwrap(),
+                String::from_utf8_lossy(&data).into_owned(),
             ))
         }
     }
@@ -611,7 +611,7 @@ pub fn handshake(
 pub fn get_data(reader: &mut dyn io::BufRead) -> Result<ResponseData, GpsdError> {
     let mut data = Vec::new();
     reader.read_until(b'\n', &mut data)?;
-    trace!("{}", String::from_utf8(data.clone()).unwrap());
+    trace!("{}", String::from_utf8_lossy(&data));
     let msg: ResponseData = serde_json::from_slice(&data)?;
     Ok(msg)
 }
