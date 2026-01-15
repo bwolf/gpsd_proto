@@ -191,6 +191,7 @@ pub struct Device {
 
 /// Type of GPS fix.
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
 pub enum Mode {
     /// No fix at all.
     NoFix,
