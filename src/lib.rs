@@ -412,15 +412,15 @@ pub struct Pps {
     /// Name of originating device.
     pub device: String,
     /// Seconds from the PPS source.
-    pub real_sec: f32,
+    pub real_sec: u64,
     /// Nanoseconds from the PPS source.
-    pub real_nsec: f32,
+    pub real_nsec: u32,
     /// Seconds from the system clock.
-    pub clock_sec: f32,
+    pub clock_sec: u64,
     /// Nanoseconds from the system clock.
-    pub clock_nsec: f32,
+    pub clock_nsec: u32,
     /// NTP style estimate of PPS precision.
-    pub precision: f32,
+    pub precision: i32,
 }
 
 /// Pseudorange noise report.
