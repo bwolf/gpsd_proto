@@ -191,6 +191,7 @@ pub struct Device {
 
 /// Type of GPS fix.
 #[derive(Debug, Copy, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
 pub enum Mode {
     /// No fix at all.
     NoFix,
@@ -477,6 +478,7 @@ pub enum UnifiedResponse {
     Sky(Sky),
     Pps(Pps),
     Gst(Gst),
+    Error(ErrorResponse),
 }
 
 /// Errors during handshake or data acquisition.
@@ -492,6 +494,13 @@ pub enum GpsdError {
     UnexpectedGpsdReply(String),
     /// Failed to enable watch.
     WatchFail(String),
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[cfg_attr(feature = "serialize", derive(Serialize))]
+pub struct ErrorResponse {
+    /// Error message.
+    pub message: String,
 }
 
 impl From<io::Error> for GpsdError {
